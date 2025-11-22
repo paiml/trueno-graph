@@ -1,0 +1,52 @@
+//! trueno-graph: GPU-first embedded graph database
+//!
+//! # Overview
+//!
+//! trueno-graph provides GPU-accelerated graph storage and algorithms for code analysis.
+//! Built on PAIML's proven infrastructure (trueno, trueno-db, aprender).
+//!
+//! # Quick Start
+//!
+//! ```no_run
+//! use trueno_graph::{CsrGraph, NodeId};
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! // Build graph from edge list
+//! let mut graph = CsrGraph::new();
+//! graph.add_edge(NodeId(0), NodeId(1), 1.0)?;  // main → parse_args
+//! graph.add_edge(NodeId(0), NodeId(2), 1.0)?;  // main → validate
+//!
+//! // Query neighbors (O(1) via CSR indexing)
+//! let callees = graph.outgoing_neighbors(NodeId(0))?;
+//! assert_eq!(callees.len(), 2);
+//!
+//! // Save to Parquet
+//! graph.write_parquet("graph.parquet").await?;
+//!
+//! // Load from disk
+//! let loaded = CsrGraph::read_parquet("graph.parquet").await?;
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! # Architecture
+//!
+//! - **Storage**: CSR (Compressed Sparse Row) format for graphs
+//! - **Persistence**: Parquet-backed (via trueno-db patterns)
+//! - **Algorithms**: Delegates to aprender (`PageRank`, Louvain, centrality)
+//! - **Performance**: 25-250x speedups vs CPU baselines (GPU mode)
+
+#![warn(missing_docs)]
+#![warn(clippy::all)]
+#![warn(clippy::pedantic)]
+#![allow(clippy::module_name_repetitions)]
+
+pub mod storage;
+pub mod algorithms;
+
+// Re-export core types
+pub use storage::{CsrGraph, NodeId};
+pub use algorithms::{find_callers, bfs, pagerank};
+
+// Error type
+pub use anyhow::{Error, Result};

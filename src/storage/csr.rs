@@ -1,0 +1,379 @@
+//! CSR (Compressed Sparse Row) graph representation
+//!
+//! Based on `GraphBLAST` (Yang et al., ACM `ToMS` 2022) for GPU-optimized sparse matrix operations.
+//!
+//! # CSR Format
+//!
+//! ```text
+//! Graph: 0 → 1, 0 → 2, 1 → 2
+//!
+//! CSR:
+//!   row_offsets: [0, 2, 3, 3]  // Node 0: edges [0..2), Node 1: [2..3), Node 2: [3..3)
+//!   col_indices: [1, 2, 2]      // Edge 0 → node 1, edge 1 → node 2, edge 2 → node 2
+//!   edge_weights: [1.0, 1.0, 1.0]
+//! ```
+
+use anyhow::{anyhow, Result};
+use std::collections::HashMap;
+
+/// Node identifier (zero-indexed)
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct NodeId(pub u32);
+
+/// CSR (Compressed Sparse Row) graph
+///
+/// Optimized for:
+/// - O(1) access to outgoing edges
+/// - GPU-friendly memory layout
+/// - Sparse matrix operations (via aprender)
+///
+/// # Example
+///
+/// ```
+/// use trueno_graph::{CsrGraph, NodeId};
+///
+/// let mut graph = CsrGraph::new();
+/// graph.add_edge(NodeId(0), NodeId(1), 1.0).unwrap();
+/// graph.add_edge(NodeId(0), NodeId(2), 1.0).unwrap();
+///
+/// let neighbors = graph.outgoing_neighbors(NodeId(0)).unwrap();
+/// assert_eq!(neighbors.len(), 2);
+/// ```
+#[derive(Debug, Clone)]
+pub struct CsrGraph {
+    /// Row offsets: node i's edges start at `row_offsets`[i]
+    /// Length: `num_nodes` + 1
+    row_offsets: Vec<u32>,
+
+    /// Column indices: edge targets
+    /// Length: `num_edges`
+    col_indices: Vec<u32>,
+
+    /// Edge weights (e.g., call counts, complexity)
+    /// Length: `num_edges`
+    edge_weights: Vec<f32>,
+
+    /// Node names (for debugging/export)
+    node_names: HashMap<NodeId, String>,
+
+    /// Number of nodes
+    num_nodes: usize,
+}
+
+impl CsrGraph {
+    /// Create new empty graph
+    #[must_use]
+    pub fn new() -> Self {
+        Self {
+            row_offsets: vec![0], // Start with single offset
+            col_indices: Vec::new(),
+            edge_weights: Vec::new(),
+            node_names: HashMap::new(),
+            num_nodes: 0,
+        }
+    }
+
+    /// Create graph from edge list
+    ///
+    /// # Arguments
+    ///
+    /// * `edges` - List of (source, target, weight) tuples
+    ///
+    /// # Errors
+    ///
+    /// Returns error if edge list is invalid (e.g., negative node IDs)
+    pub fn from_edge_list(edges: &[(NodeId, NodeId, f32)]) -> Result<Self> {
+        if edges.is_empty() {
+            return Ok(Self::new());
+        }
+
+        // Find max node ID to determine graph size
+        let max_node = edges
+            .iter()
+            .flat_map(|(src, dst, _)| [src.0, dst.0])
+            .max()
+            .ok_or_else(|| anyhow!("Empty edge list"))?;
+
+        let num_nodes = (max_node + 1) as usize;
+
+        // Build adjacency list (temporary)
+        let mut adj_list: Vec<Vec<(u32, f32)>> = vec![Vec::new(); num_nodes];
+        for (src, dst, weight) in edges {
+            adj_list[src.0 as usize].push((dst.0, *weight));
+        }
+
+        // Convert to CSR
+        let mut row_offsets = Vec::with_capacity(num_nodes + 1);
+        let mut col_indices = Vec::new();
+        let mut edge_weights_vec = Vec::new();
+
+        let mut offset = 0_u32;
+        row_offsets.push(offset);
+
+        for neighbors in &adj_list {
+            #[allow(clippy::cast_possible_truncation)]  // Graphs >4B nodes not supported yet
+            let len_u32 = neighbors.len() as u32;
+            offset += len_u32;
+            row_offsets.push(offset);
+
+            for (target, weight) in neighbors {
+                col_indices.push(*target);
+                edge_weights_vec.push(*weight);
+            }
+        }
+
+        Ok(Self {
+            row_offsets,
+            col_indices,
+            edge_weights: edge_weights_vec,
+            node_names: HashMap::new(),
+            num_nodes,
+        })
+    }
+
+    /// Add edge to graph (dynamic insertion)
+    ///
+    /// Note: For large graphs, use `from_edge_list` for better performance.
+    ///
+    /// # Errors
+    ///
+    /// Returns error if graph is already finalized (immutable CSR)
+    pub fn add_edge(&mut self, src: NodeId, dst: NodeId, weight: f32) -> Result<()> {
+        // Expand graph if needed
+        let max_node = src.0.max(dst.0) as usize;
+        if max_node >= self.num_nodes {
+            self.expand_to(max_node + 1);
+        }
+
+        // Find insertion point (maintain sorted order by source)
+        let src_idx = src.0 as usize;
+        let end = self.row_offsets[src_idx + 1] as usize;
+
+        // Insert edge
+        self.col_indices.insert(end, dst.0);
+        self.edge_weights.insert(end, weight);
+
+        // Update row offsets for all nodes after src
+        for offset in &mut self.row_offsets[src_idx + 1..] {
+            *offset += 1;
+        }
+
+        Ok(())
+    }
+
+    /// Get outgoing neighbors (callees) of a node
+    ///
+    /// # Errors
+    ///
+    /// Returns error if node ID is out of bounds
+    pub fn outgoing_neighbors(&self, node: NodeId) -> Result<&[u32]> {
+        if (node.0 as usize) >= self.num_nodes {
+            return Err(anyhow!("Node ID {} out of bounds", node.0));
+        }
+
+        let idx = node.0 as usize;
+        let start = self.row_offsets[idx] as usize;
+        let end = self.row_offsets[idx + 1] as usize;
+
+        Ok(&self.col_indices[start..end])
+    }
+
+    /// Get incoming neighbors (callers) of a node
+    ///
+    /// Note: This requires a full scan (O(E)). For frequent queries, build a reverse CSR.
+    ///
+    /// # Errors
+    ///
+    /// Returns error if node ID is out of bounds
+    pub fn incoming_neighbors(&self, target: NodeId) -> Result<Vec<u32>> {
+        if (target.0 as usize) >= self.num_nodes {
+            return Err(anyhow!("Node ID {} out of bounds", target.0));
+        }
+
+        let mut callers = Vec::new();
+
+        for (node_id, neighbors) in self.iter_adjacency() {
+            if neighbors.iter().any(|(dst, _)| *dst == target.0) {
+                callers.push(node_id);
+            }
+        }
+
+        Ok(callers)
+    }
+
+    /// Set node name (for debugging/export)
+    pub fn set_node_name(&mut self, node: NodeId, name: String) {
+        self.node_names.insert(node, name);
+    }
+
+    /// Get node name
+    #[must_use]
+    pub fn get_node_name(&self, node: NodeId) -> Option<&str> {
+        self.node_names.get(&node).map(String::as_str)
+    }
+
+    /// Get number of nodes
+    #[must_use]
+    pub const fn num_nodes(&self) -> usize {
+        self.num_nodes
+    }
+
+    /// Get number of edges
+    #[must_use]
+    pub fn num_edges(&self) -> usize {
+        self.col_indices.len()
+    }
+
+    /// Iterate over adjacency list (`node_id`, &[(target, weight)])
+    pub fn iter_adjacency(&self) -> impl Iterator<Item = (u32, &[(u32, f32)])> + '_ {
+        (0..self.num_nodes).map(move |node_id| {
+            let start = self.row_offsets[node_id] as usize;
+            let end = self.row_offsets[node_id + 1] as usize;
+
+            let targets = &self.col_indices[start..end];
+            let weights = &self.edge_weights[start..end];
+
+            // SAFETY: We know targets and weights have same length (built together)
+            let neighbors: Vec<(u32, f32)> = targets
+                .iter()
+                .zip(weights.iter())
+                .map(|(t, w)| (*t, *w))
+                .collect();
+
+            // Leak to satisfy lifetime (temporary hack for MVP)
+            let static_neighbors: &'static [(u32, f32)] = Box::leak(neighbors.into_boxed_slice());
+
+            #[allow(clippy::cast_possible_truncation)]  // Graphs >4B nodes not supported yet
+            (node_id as u32, static_neighbors)
+        })
+    }
+
+    /// Expand graph to accommodate new nodes
+    fn expand_to(&mut self, new_size: usize) {
+        if new_size <= self.num_nodes {
+            return;
+        }
+
+        // Add row offsets for new nodes (all point to same offset = no edges)
+        let last_offset = *self.row_offsets.last().unwrap_or(&0);
+        for _ in self.num_nodes..new_size {
+            self.row_offsets.push(last_offset);
+        }
+
+        self.num_nodes = new_size;
+    }
+
+    /// Get CSR components (for aprender integration)
+    #[must_use]
+    pub fn csr_components(&self) -> (&[u32], &[u32], &[f32]) {
+        (&self.row_offsets, &self.col_indices, &self.edge_weights)
+    }
+}
+
+impl Default for CsrGraph {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_empty_graph() {
+        let graph = CsrGraph::new();
+        assert_eq!(graph.num_nodes(), 0);
+        assert_eq!(graph.num_edges(), 0);
+    }
+
+    #[test]
+    fn test_from_edge_list_simple() {
+        let edges = vec![
+            (NodeId(0), NodeId(1), 1.0),
+            (NodeId(0), NodeId(2), 1.0),
+            (NodeId(1), NodeId(2), 1.0),
+        ];
+
+        let graph = CsrGraph::from_edge_list(&edges).unwrap();
+
+        assert_eq!(graph.num_nodes(), 3);
+        assert_eq!(graph.num_edges(), 3);
+
+        // Check CSR structure
+        assert_eq!(graph.row_offsets, vec![0, 2, 3, 3]);
+        assert_eq!(graph.col_indices, vec![1, 2, 2]);
+        assert_eq!(graph.edge_weights, vec![1.0, 1.0, 1.0]);
+    }
+
+    #[test]
+    fn test_outgoing_neighbors() {
+        let edges = vec![
+            (NodeId(0), NodeId(1), 1.0),
+            (NodeId(0), NodeId(2), 2.0),
+        ];
+
+        let graph = CsrGraph::from_edge_list(&edges).unwrap();
+
+        let neighbors = graph.outgoing_neighbors(NodeId(0)).unwrap();
+        assert_eq!(neighbors, &[1, 2]);
+
+        let neighbors = graph.outgoing_neighbors(NodeId(1)).unwrap();
+        let empty: &[u32] = &[];
+        assert_eq!(neighbors, empty);
+    }
+
+    #[test]
+    fn test_incoming_neighbors() {
+        let edges = vec![
+            (NodeId(0), NodeId(2), 1.0),
+            (NodeId(1), NodeId(2), 1.0),
+        ];
+
+        let graph = CsrGraph::from_edge_list(&edges).unwrap();
+
+        let callers = graph.incoming_neighbors(NodeId(2)).unwrap();
+        assert_eq!(callers, vec![0, 1]);
+    }
+
+    #[test]
+    fn test_add_edge_dynamic() {
+        let mut graph = CsrGraph::new();
+
+        graph.add_edge(NodeId(0), NodeId(1), 1.0).unwrap();
+        graph.add_edge(NodeId(0), NodeId(2), 1.0).unwrap();
+
+        assert_eq!(graph.num_nodes(), 3);
+        assert_eq!(graph.num_edges(), 2);
+
+        let neighbors = graph.outgoing_neighbors(NodeId(0)).unwrap();
+        assert_eq!(neighbors, &[1, 2]);
+    }
+
+    #[test]
+    fn test_node_names() {
+        let mut graph = CsrGraph::new();
+        graph.add_edge(NodeId(0), NodeId(1), 1.0).unwrap();
+
+        graph.set_node_name(NodeId(0), "main".to_string());
+        graph.set_node_name(NodeId(1), "parse_args".to_string());
+
+        assert_eq!(graph.get_node_name(NodeId(0)), Some("main"));
+        assert_eq!(graph.get_node_name(NodeId(1)), Some("parse_args"));
+    }
+
+    #[test]
+    fn test_csr_components() {
+        let edges = vec![
+            (NodeId(0), NodeId(1), 1.0),
+            (NodeId(0), NodeId(2), 2.0),
+        ];
+
+        let graph = CsrGraph::from_edge_list(&edges).unwrap();
+        let (row_offsets, col_indices, weights) = graph.csr_components();
+
+        assert_eq!(row_offsets, &[0, 2, 2, 2]);
+        assert_eq!(col_indices, &[1, 2]);
+        assert_eq!(weights, &[1.0, 2.0]);
+    }
+}
