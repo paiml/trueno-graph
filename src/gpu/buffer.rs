@@ -133,4 +133,77 @@ mod tests {
         assert_eq!(buffers.num_nodes(), 0);
         assert_eq!(buffers.num_edges(), 0);
     }
+
+    #[tokio::test]
+    async fn test_upload_weighted_graph() {
+        if !GpuDevice::is_gpu_available().await {
+            eprintln!("⚠️  Skipping test_upload_weighted_graph: GPU not available");
+            return;
+        }
+
+        let device = GpuDevice::new().await.unwrap();
+
+        // Create weighted graph
+        let mut graph = CsrGraph::new();
+        graph.add_edge(NodeId(0), NodeId(1), 2.5).unwrap();
+        graph.add_edge(NodeId(1), NodeId(2), 3.7).unwrap();
+
+        let buffers = GpuCsrBuffers::from_csr_graph(&device, &graph).unwrap();
+
+        assert_eq!(buffers.num_nodes(), 3);
+        assert_eq!(buffers.num_edges(), 2);
+        assert!(buffers.edge_weights.is_some()); // Weighted graph
+    }
+
+    #[tokio::test]
+    async fn test_upload_large_graph() {
+        if !GpuDevice::is_gpu_available().await {
+            eprintln!("⚠️  Skipping test_upload_large_graph: GPU not available");
+            return;
+        }
+
+        let device = GpuDevice::new().await.unwrap();
+
+        // Create larger graph
+        let mut graph = CsrGraph::new();
+        for i in 0..100 {
+            graph
+                .add_edge(NodeId(i), NodeId((i + 1) % 100), 1.0)
+                .unwrap();
+        }
+
+        let buffers = GpuCsrBuffers::from_csr_graph(&device, &graph).unwrap();
+
+        assert_eq!(buffers.num_nodes(), 100);
+        assert_eq!(buffers.num_edges(), 100);
+    }
+
+    #[tokio::test]
+    async fn test_buffer_with_complex_graph() {
+        if !GpuDevice::is_gpu_available().await {
+            eprintln!("⚠️  Skipping test_buffer_with_complex_graph: GPU not available");
+            return;
+        }
+
+        let device = GpuDevice::new().await.unwrap();
+
+        // Create graph with varying degrees
+        let mut graph = CsrGraph::new();
+        // Node 0: high degree
+        for i in 1..10 {
+            graph.add_edge(NodeId(0), NodeId(i), i as f32).unwrap();
+        }
+        // Node 1: medium degree
+        for i in 10..15 {
+            graph.add_edge(NodeId(1), NodeId(i), i as f32).unwrap();
+        }
+        // Node 2: low degree
+        graph.add_edge(NodeId(2), NodeId(15), 15.0).unwrap();
+
+        let buffers = GpuCsrBuffers::from_csr_graph(&device, &graph).unwrap();
+
+        assert!(buffers.num_nodes() >= 16);
+        assert_eq!(buffers.num_edges(), 15); // 9 + 5 + 1
+        assert!(buffers.edge_weights.is_some());
+    }
 }

@@ -260,6 +260,7 @@ fn find_dead_code_patterns(graph: &CsrGraph, pattern: &Pattern) -> Vec<PatternMa
 ///
 /// Uses backtracking to find all subgraph isomorphisms. Suitable for small patterns
 /// (typical in code smell detection). For larger patterns, consider specialized algorithms.
+#[allow(clippy::unnecessary_wraps, clippy::cast_possible_truncation)]
 fn find_generic_patterns(graph: &CsrGraph, pattern: &Pattern) -> Result<Vec<PatternMatch>> {
     let mut matches = Vec::new();
 
@@ -296,6 +297,7 @@ fn find_generic_patterns(graph: &CsrGraph, pattern: &Pattern) -> Result<Vec<Patt
 }
 
 /// Recursive helper for pattern matching (backtracking)
+#[allow(clippy::cast_possible_truncation)]
 fn try_match_pattern(
     graph: &CsrGraph,
     pattern_adj: &HashMap<u32, HashSet<u32>>,
@@ -519,5 +521,117 @@ mod tests {
         assert!(Severity::Low < Severity::Medium);
         assert!(Severity::Medium < Severity::High);
         assert!(Severity::High < Severity::Critical);
+    }
+
+    #[test]
+    fn test_generic_pattern_triangle() {
+        // Create a triangle pattern: 0 -> 1, 1 -> 2, 2 -> 0
+        let pattern = Pattern::new(
+            "Triangle".to_string(),
+            vec![(0, 1), (1, 2), (2, 0)],
+            Severity::Low,
+        );
+
+        // Graph with triangle
+        let mut graph = CsrGraph::new();
+        graph.add_edge(NodeId(0), NodeId(1), 1.0).unwrap();
+        graph.add_edge(NodeId(1), NodeId(2), 1.0).unwrap();
+        graph.add_edge(NodeId(2), NodeId(0), 1.0).unwrap();
+
+        let matches = find_patterns(&graph, &pattern).unwrap();
+        assert!(!matches.is_empty());
+    }
+
+    #[test]
+    fn test_generic_pattern_line() {
+        // Create a line pattern: 0 -> 1 -> 2
+        let pattern = Pattern::new("Line".to_string(), vec![(0, 1), (1, 2)], Severity::Low);
+
+        // Graph with matching line
+        let mut graph = CsrGraph::new();
+        graph.add_edge(NodeId(0), NodeId(1), 1.0).unwrap();
+        graph.add_edge(NodeId(1), NodeId(2), 1.0).unwrap();
+
+        let matches = find_patterns(&graph, &pattern).unwrap();
+        assert!(!matches.is_empty());
+    }
+
+    #[test]
+    fn test_generic_pattern_no_match() {
+        // Create a pattern that won't match
+        let pattern = Pattern::new("V-shape".to_string(), vec![(0, 1), (0, 2)], Severity::Low);
+
+        // Graph with different structure (linear)
+        let mut graph = CsrGraph::new();
+        graph.add_edge(NodeId(0), NodeId(1), 1.0).unwrap();
+
+        let matches = find_patterns(&graph, &pattern).unwrap();
+        assert_eq!(matches.len(), 0);
+    }
+
+    #[test]
+    fn test_pattern_with_max_nodes() {
+        let mut pattern = Pattern::circular_dependency(3);
+        pattern.max_nodes = Some(3);
+
+        let mut graph = CsrGraph::new();
+        graph.add_edge(NodeId(0), NodeId(1), 1.0).unwrap();
+        graph.add_edge(NodeId(1), NodeId(2), 1.0).unwrap();
+        graph.add_edge(NodeId(2), NodeId(0), 1.0).unwrap();
+
+        let matches = find_patterns(&graph, &pattern).unwrap();
+        assert_eq!(matches.len(), 1);
+    }
+
+    #[test]
+    fn test_multiple_god_classes() {
+        // Two nodes with high fan-out
+        let mut graph = CsrGraph::new();
+        // Node 0 calls 5 functions
+        for i in 1..=5 {
+            graph.add_edge(NodeId(0), NodeId(i), 1.0).unwrap();
+        }
+        // Node 6 calls 5 functions
+        for i in 7..=11 {
+            graph.add_edge(NodeId(6), NodeId(i), 1.0).unwrap();
+        }
+
+        let pattern = Pattern::god_class(5);
+        let matches = find_patterns(&graph, &pattern).unwrap();
+
+        assert_eq!(matches.len(), 2);
+    }
+
+    #[test]
+    fn test_multiple_cycles() {
+        // Create two separate 3-node cycles
+        let mut graph = CsrGraph::new();
+        // Cycle 1: 0 -> 1 -> 2 -> 0
+        graph.add_edge(NodeId(0), NodeId(1), 1.0).unwrap();
+        graph.add_edge(NodeId(1), NodeId(2), 1.0).unwrap();
+        graph.add_edge(NodeId(2), NodeId(0), 1.0).unwrap();
+        // Cycle 2: 3 -> 4 -> 5 -> 3
+        graph.add_edge(NodeId(3), NodeId(4), 1.0).unwrap();
+        graph.add_edge(NodeId(4), NodeId(5), 1.0).unwrap();
+        graph.add_edge(NodeId(5), NodeId(3), 1.0).unwrap();
+
+        let pattern = Pattern::circular_dependency(3);
+        let matches = find_patterns(&graph, &pattern).unwrap();
+
+        assert_eq!(matches.len(), 2);
+    }
+
+    #[test]
+    fn test_dead_code_with_callers() {
+        // Node 0 has callers, node 1 has no callers
+        let mut graph = CsrGraph::new();
+        graph.add_edge(NodeId(2), NodeId(0), 1.0).unwrap();
+        graph.add_edge(NodeId(1), NodeId(3), 1.0).unwrap();
+
+        let pattern = Pattern::dead_code();
+        let matches = find_patterns(&graph, &pattern).unwrap();
+
+        // Should find nodes 1 and 2 (no incoming edges)
+        assert!(matches.len() >= 2);
     }
 }

@@ -2461,6 +2461,8 @@ dependencies = [
 [[package]]
 name = "trueno-db"
 version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "afd75744ba85e9288e3af04474f3b5672db0dcd1e9e449684ab4b28d13e30b6a"
 dependencies = [
  "anyhow",
  "arrow",
@@ -2494,7 +2496,7 @@ dependencies = [
  "thiserror 1.0.69",
  "tokio",
  "tokio-test",
- "trueno 0.6.0",
+ "trueno 0.7.0",
  "trueno-db",
  "wgpu",
 ]

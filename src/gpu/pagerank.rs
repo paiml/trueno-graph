@@ -431,7 +431,10 @@ mod tests {
         // Verify scores sum to approximately 1.0 (within tolerance for GPU floating point)
         let sum = score_0 + score_1 + score_2;
         println!("Sum: {sum}");
-        assert!((sum - 1.0).abs() < 0.1, "Sum should be approximately 1.0, got {sum}");
+        assert!(
+            (sum - 1.0).abs() < 0.1,
+            "Sum should be approximately 1.0, got {sum}"
+        );
     }
 
     #[test]

@@ -57,8 +57,8 @@ pub use storage::{CsrGraph, NodeId};
 
 #[cfg(feature = "gpu")]
 pub use gpu::{
-    gpu_bfs, gpu_bfs_paged, GpuBfsResult, GpuCsrBuffers, GpuDevice, GpuMemoryLimits,
-    GraphTile, LruTileCache, PagingCoordinator, DEFAULT_MORSEL_SIZE,
+    gpu_bfs, gpu_bfs_paged, GpuBfsResult, GpuCsrBuffers, GpuDevice, GpuMemoryLimits, GraphTile,
+    LruTileCache, PagingCoordinator, DEFAULT_MORSEL_SIZE,
 };
 
 // Error type

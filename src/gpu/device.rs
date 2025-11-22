@@ -218,4 +218,102 @@ mod tests {
         let err = GpuDeviceError::DeviceRequest("test error".to_string());
         assert_eq!(err.to_string(), "Failed to request GPU device: test error");
     }
+
+    #[tokio::test]
+    async fn test_gpu_device_queue() {
+        if !GpuDevice::is_gpu_available().await {
+            eprintln!("⚠️  Skipping test_gpu_device_queue: GPU not available");
+            return;
+        }
+
+        let gpu_device = GpuDevice::new().await.unwrap();
+        let device = gpu_device.device();
+        let queue = gpu_device.queue();
+
+        // Test buffer operations using device and queue
+        let test_data: Vec<u32> = vec![1, 2, 3, 4, 5];
+        let buffer = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("test_buffer"),
+            size: (test_data.len() * std::mem::size_of::<u32>()) as u64,
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+
+        queue.write_buffer(&buffer, 0, bytemuck::cast_slice(&test_data));
+        queue.submit(std::iter::empty());
+
+        // Verify device and queue are valid
+        assert!(gpu_device.is_available());
+    }
+
+    #[tokio::test]
+    async fn test_create_buffer_init() {
+        if !GpuDevice::is_gpu_available().await {
+            eprintln!("⚠️  Skipping test_create_buffer_init: GPU not available");
+            return;
+        }
+
+        let device = GpuDevice::new().await.unwrap();
+        let data: Vec<u32> = vec![1, 2, 3, 4];
+
+        let buffer = device
+            .create_buffer_init(
+                "test_init",
+                bytemuck::cast_slice(&data),
+                wgpu::BufferUsages::STORAGE,
+            )
+            .unwrap();
+
+        // Verify buffer was created
+        assert_eq!(buffer.size(), (data.len() * 4) as u64);
+    }
+
+    #[tokio::test]
+    async fn test_create_buffer() {
+        if !GpuDevice::is_gpu_available().await {
+            eprintln!("⚠️  Skipping test_create_buffer: GPU not available");
+            return;
+        }
+
+        let device = GpuDevice::new().await.unwrap();
+
+        // Create empty buffer
+        let buffer = device
+            .create_buffer(
+                "test_buffer",
+                1024,
+                wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+            )
+            .unwrap();
+
+        assert_eq!(buffer.size(), 1024);
+    }
+
+    #[tokio::test]
+    async fn test_different_buffer_usages() {
+        if !GpuDevice::is_gpu_available().await {
+            eprintln!("⚠️  Skipping test_different_buffer_usages: GPU not available");
+            return;
+        }
+
+        let device = GpuDevice::new().await.unwrap();
+
+        // Storage buffer
+        let storage = device
+            .create_buffer("storage", 512, wgpu::BufferUsages::STORAGE)
+            .unwrap();
+        assert_eq!(storage.size(), 512);
+
+        // Uniform buffer
+        let uniform = device
+            .create_buffer("uniform", 256, wgpu::BufferUsages::UNIFORM)
+            .unwrap();
+        assert_eq!(uniform.size(), 256);
+
+        // Vertex buffer
+        let vertex = device
+            .create_buffer("vertex", 128, wgpu::BufferUsages::VERTEX)
+            .unwrap();
+        assert_eq!(vertex.size(), 128);
+    }
 }

@@ -161,4 +161,76 @@ mod tests {
         assert_eq!(cache.len(), 0);
         assert!(cache.is_empty());
     }
+
+    #[tokio::test]
+    async fn test_lru_cache_reinsertion() {
+        if !GpuDevice::is_gpu_available().await {
+            eprintln!("⚠️  Skipping test_lru_cache_reinsertion: GPU not available");
+            return;
+        }
+
+        let device = GpuDevice::new().await.unwrap();
+        let mut cache = LruTileCache::new(2);
+
+        let buf1 = device
+            .create_buffer("tile_1", 1024, wgpu::BufferUsages::STORAGE)
+            .unwrap();
+        let buf1_new = device
+            .create_buffer("tile_1_new", 1024, wgpu::BufferUsages::STORAGE)
+            .unwrap();
+
+        // Insert tile 1
+        assert_eq!(cache.insert(1, buf1), None);
+        assert_eq!(cache.len(), 1);
+
+        // Re-insert tile 1 (should not evict)
+        assert_eq!(cache.insert(1, buf1_new), None);
+        assert_eq!(cache.len(), 1);
+        assert!(cache.contains(1));
+    }
+
+    #[tokio::test]
+    async fn test_lru_cache_clear() {
+        if !GpuDevice::is_gpu_available().await {
+            eprintln!("⚠️  Skipping test_lru_cache_clear: GPU not available");
+            return;
+        }
+
+        let device = GpuDevice::new().await.unwrap();
+        let mut cache = LruTileCache::new(3);
+
+        let buf1 = device
+            .create_buffer("tile_1", 1024, wgpu::BufferUsages::STORAGE)
+            .unwrap();
+        let buf2 = device
+            .create_buffer("tile_2", 1024, wgpu::BufferUsages::STORAGE)
+            .unwrap();
+
+        cache.insert(1, buf1);
+        cache.insert(2, buf2);
+        assert_eq!(cache.len(), 2);
+
+        cache.clear();
+        assert_eq!(cache.len(), 0);
+        assert!(cache.is_empty());
+        assert!(!cache.contains(1));
+        assert!(!cache.contains(2));
+    }
+
+    #[tokio::test]
+    async fn test_lru_cache_get_nonexistent() {
+        if !GpuDevice::is_gpu_available().await {
+            eprintln!("⚠️  Skipping test_lru_cache_get_nonexistent: GPU not available");
+            return;
+        }
+
+        let mut cache = LruTileCache::new(3);
+        assert!(cache.get(999).is_none());
+    }
+
+    #[test]
+    fn test_lru_cache_zero_capacity() {
+        let cache = LruTileCache::new(0);
+        assert_eq!(cache.capacity(), 1); // Minimum capacity is 1
+    }
 }

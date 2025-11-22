@@ -103,3 +103,34 @@ fn test_csr_components_for_aprender() {
     assert_eq!(col_indices, &[1, 2, 2]);
     assert_eq!(weights, &[1.0, 2.0, 3.0]);
 }
+
+#[test]
+fn test_adjacency_iteration() {
+    // Test iter_adjacency for complete graph processing
+    let edges = vec![
+        (NodeId(0), NodeId(1), 1.5),
+        (NodeId(0), NodeId(2), 2.5),
+        (NodeId(1), NodeId(2), 3.5),
+        (NodeId(1), NodeId(3), 4.5),
+    ];
+
+    let graph = CsrGraph::from_edge_list(&edges).unwrap();
+
+    // Test adjacency method
+    let (targets, weights) = graph.adjacency(NodeId(0));
+    assert_eq!(targets, &[1, 2]);
+    assert_eq!(weights, &[1.5, 2.5]);
+
+    let (targets, weights) = graph.adjacency(NodeId(1));
+    assert_eq!(targets, &[2, 3]);
+    assert_eq!(weights, &[3.5, 4.5]);
+
+    // Test iterator
+    let adjacencies: Vec<_> = graph.iter_adjacency().collect();
+    assert_eq!(adjacencies.len(), 4);
+
+    // Verify slices
+    assert_eq!(graph.row_offsets_slice(), &[0, 2, 4, 4, 4]);
+    assert_eq!(graph.col_indices_slice(), &[1, 2, 2, 3]);
+    assert_eq!(graph.edge_weights_slice(), &[1.5, 2.5, 3.5, 4.5]);
+}

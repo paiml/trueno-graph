@@ -2,7 +2,7 @@
 //!
 //! Shows how to process graphs larger than VRAM using tile-based processing.
 
-use trueno_graph::gpu::{GpuDevice, GpuMemoryLimits, PagingCoordinator, gpu_bfs_paged};
+use trueno_graph::gpu::{gpu_bfs_paged, GpuDevice, GpuMemoryLimits, PagingCoordinator};
 use trueno_graph::{CsrGraph, NodeId};
 
 #[tokio::main]
@@ -16,8 +16,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Detect memory limits
     let limits = GpuMemoryLimits::detect(&device)?;
     println!("\n📊 GPU Memory Limits:");
-    println!("   Total VRAM: {:.2} GB", limits.total_vram as f64 / 1_073_741_824.0);
-    println!("   Usable VRAM: {:.2} GB", limits.usable_vram as f64 / 1_073_741_824.0);
+    println!(
+        "   Total VRAM: {:.2} GB",
+        limits.total_vram as f64 / 1_073_741_824.0
+    );
+    println!(
+        "   Usable VRAM: {:.2} GB",
+        limits.usable_vram as f64 / 1_073_741_824.0
+    );
     println!("   Morsel size: {} MB", limits.morsel_size / 1_048_576);
     println!("   Max morsels: {}", limits.max_morsels);
 
@@ -47,9 +53,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("✅ BFS Complete!");
     println!("   Visited nodes: {}", result.visited_count);
-    println!("   Distance to node 100: {:?}", result.distance(NodeId(100)));
-    println!("   Distance to node 5000: {:?}", result.distance(NodeId(5000)));
-    println!("   Distance to node 9999: {:?}", result.distance(NodeId(9999)));
+    println!(
+        "   Distance to node 100: {:?}",
+        result.distance(NodeId(100))
+    );
+    println!(
+        "   Distance to node 5000: {:?}",
+        result.distance(NodeId(5000))
+    );
+    println!(
+        "   Distance to node 9999: {:?}",
+        result.distance(NodeId(9999))
+    );
 
     // Demonstrate tile information
     println!("\n📋 Tile Details (first 3 tiles):");

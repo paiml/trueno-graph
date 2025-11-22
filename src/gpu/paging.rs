@@ -24,9 +24,11 @@ pub struct GraphTile {
     /// Number of nodes in this tile
     pub num_nodes: usize,
 
-    /// CSR data for this tile's nodes
+    /// CSR row offsets for this tile
     pub row_offsets: Vec<u32>,
+    /// CSR column indices (edge targets)
     pub col_indices: Vec<u32>,
+    /// Edge weights
     pub edge_weights: Vec<f32>,
 }
 
@@ -53,9 +55,6 @@ pub struct PagingCoordinator {
 
     /// Tile size in nodes
     tile_size: usize,
-
-    /// Total nodes in original graph
-    total_nodes: usize,
 }
 
 impl PagingCoordinator {
@@ -64,6 +63,7 @@ impl PagingCoordinator {
     /// # Errors
     ///
     /// Returns error if memory limits cannot be detected
+    #[allow(clippy::cast_possible_truncation)]
     pub fn new(device: &GpuDevice, graph: &CsrGraph) -> Result<Self> {
         let limits = GpuMemoryLimits::detect(device)?;
 
@@ -72,9 +72,9 @@ impl PagingCoordinator {
         let total_nodes = graph.num_nodes();
 
         // Estimate bytes per node (amortized)
-        let total_graph_bytes = row_offsets.len() * std::mem::size_of::<u32>()
-            + col_indices.len() * std::mem::size_of::<u32>()
-            + edge_weights.len() * std::mem::size_of::<f32>();
+        let total_graph_bytes = std::mem::size_of_val(row_offsets)
+            + std::mem::size_of_val(col_indices)
+            + std::mem::size_of_val(edge_weights);
 
         let bytes_per_node = if total_nodes > 0 {
             total_graph_bytes / total_nodes
@@ -86,9 +86,8 @@ impl PagingCoordinator {
 
         // Split graph into tiles
         let mut tiles = Vec::new();
-        let mut tile_id = 0;
 
-        for start_node in (0..total_nodes).step_by(tile_size) {
+        for (tile_id, start_node) in (0..total_nodes).step_by(tile_size).enumerate() {
             let end_node = (start_node + tile_size).min(total_nodes);
             let num_nodes = end_node - start_node;
 
@@ -105,19 +104,17 @@ impl PagingCoordinator {
                 col_indices: tile_col_indices,
                 edge_weights: tile_edge_weights,
             });
-
-            tile_id += 1;
         }
 
         Ok(Self {
             limits,
             tiles,
             tile_size,
-            total_nodes,
         })
     }
 
-    /// Extract CSR data for a tile (nodes start_node..end_node)
+    /// Extract CSR data for a tile (nodes `start_node..end_node`)
+    #[allow(clippy::cast_possible_truncation)]
     fn extract_tile_csr(
         graph: &CsrGraph,
         start_node: usize,
@@ -168,7 +165,7 @@ impl PagingCoordinator {
     /// Check if graph fits entirely in VRAM (no paging needed)
     #[must_use]
     pub fn fits_in_vram(&self) -> bool {
-        let total_bytes: usize = self.tiles.iter().map(|t| t.size_bytes()).sum();
+        let total_bytes: usize = self.tiles.iter().map(GraphTile::size_bytes).sum();
         self.limits.fits_in_vram(total_bytes)
     }
 
@@ -254,6 +251,77 @@ mod tests {
         }
     }
 
+    #[tokio::test]
+    async fn test_paging_coordinator_get_tile() {
+        if !GpuDevice::is_gpu_available().await {
+            eprintln!("⚠️  Skipping test_paging_coordinator_get_tile: GPU not available");
+            return;
+        }
+
+        let device = GpuDevice::new().await.unwrap();
+
+        let mut graph = CsrGraph::new();
+        graph.add_edge(NodeId(0), NodeId(1), 1.0).unwrap();
+        graph.add_edge(NodeId(1), NodeId(2), 1.0).unwrap();
+
+        let coordinator = PagingCoordinator::new(&device, &graph).unwrap();
+
+        // Get tile by ID
+        let tile0 = coordinator.get_tile(0);
+        assert!(tile0.is_some());
+
+        // Invalid tile ID
+        let invalid_tile = coordinator.get_tile(999);
+        assert!(invalid_tile.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_paging_coordinator_tiles_iterator() {
+        if !GpuDevice::is_gpu_available().await {
+            eprintln!("⚠️  Skipping test_paging_coordinator_tiles_iterator: GPU not available");
+            return;
+        }
+
+        let device = GpuDevice::new().await.unwrap();
+
+        let mut graph = CsrGraph::new();
+        for i in 0..50 {
+            graph.add_edge(NodeId(i), NodeId(i + 1), 1.0).unwrap();
+        }
+
+        let coordinator = PagingCoordinator::new(&device, &graph).unwrap();
+
+        // Count tiles using iterator
+        let tile_count = coordinator.tiles().count();
+        assert_eq!(tile_count, coordinator.num_tiles());
+
+        // Verify all tiles have valid ranges
+        for tile in coordinator.tiles() {
+            assert!(tile.start_node < tile.end_node);
+            assert_eq!(tile.num_nodes, tile.end_node - tile.start_node);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_paging_coordinator_limits() {
+        if !GpuDevice::is_gpu_available().await {
+            eprintln!("⚠️  Skipping test_paging_coordinator_limits: GPU not available");
+            return;
+        }
+
+        let device = GpuDevice::new().await.unwrap();
+
+        let mut graph = CsrGraph::new();
+        graph.add_edge(NodeId(0), NodeId(1), 1.0).unwrap();
+
+        let coordinator = PagingCoordinator::new(&device, &graph).unwrap();
+
+        let limits = coordinator.limits();
+        assert!(limits.total_vram > 0);
+        assert!(limits.usable_vram > 0);
+        assert!(limits.max_morsels > 0);
+    }
+
     #[test]
     fn test_graph_tile_size() {
         let tile = GraphTile {
@@ -271,5 +339,45 @@ mod tests {
 
         // 101 u32 + 200 u32 + 200 f32 = 101*4 + 200*4 + 200*4 = 2004 bytes
         assert_eq!(size, 101 * 4 + 200 * 4 + 200 * 4);
+    }
+
+    #[tokio::test]
+    async fn test_paging_coordinator_empty_graph() {
+        if !GpuDevice::is_gpu_available().await {
+            eprintln!("⚠️  Skipping test_paging_coordinator_empty_graph: GPU not available");
+            return;
+        }
+
+        let device = GpuDevice::new().await.unwrap();
+        let graph = CsrGraph::new();
+
+        let coordinator = PagingCoordinator::new(&device, &graph).unwrap();
+
+        assert_eq!(coordinator.num_tiles(), 0);
+        assert!(coordinator.fits_in_vram()); // Empty graph always fits
+        assert!(coordinator.get_tile_for_node(NodeId(0)).is_none());
+    }
+
+    #[tokio::test]
+    async fn test_paging_with_single_tile() {
+        if !GpuDevice::is_gpu_available().await {
+            eprintln!("⚠️  Skipping test_paging_with_single_tile: GPU not available");
+            return;
+        }
+
+        let device = GpuDevice::new().await.unwrap();
+
+        // Small graph that fits in one tile
+        let mut graph = CsrGraph::new();
+        for i in 0..5 {
+            graph.add_edge(NodeId(i), NodeId(i + 1), 1.0).unwrap();
+        }
+
+        let coordinator = PagingCoordinator::new(&device, &graph).unwrap();
+
+        assert_eq!(coordinator.num_tiles(), 1);
+        let tile = coordinator.get_tile(0).unwrap();
+        assert_eq!(tile.id, 0);
+        assert_eq!(tile.num_nodes, 6);
     }
 }

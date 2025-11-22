@@ -41,6 +41,7 @@ use std::collections::VecDeque;
 /// # Ok(())
 /// # }
 /// ```
+#[allow(clippy::cast_possible_truncation)]
 pub async fn gpu_bfs_paged(
     device: &GpuDevice,
     graph: &CsrGraph,
@@ -71,7 +72,10 @@ pub async fn gpu_bfs_paged(
     let mut current_level = 0_u32;
 
     // Create tile cache (capacity = max tiles that fit in VRAM)
-    let cache_capacity = coordinator.limits().max_morsels.min(coordinator.num_tiles());
+    let cache_capacity = coordinator
+        .limits()
+        .max_morsels
+        .min(coordinator.num_tiles());
     let mut _tile_cache = LruTileCache::new(cache_capacity);
 
     // Process tiles tile-by-tile
@@ -195,5 +199,107 @@ mod tests {
         assert_eq!(result.distance(NodeId(0)), Some(0));
         assert_eq!(result.distance(NodeId(1)), Some(1));
         assert_eq!(result.distance(NodeId(50)), Some(50));
+    }
+
+    #[tokio::test]
+    async fn test_paged_bfs_star_graph() {
+        if !GpuDevice::is_gpu_available().await {
+            eprintln!("⚠️  Skipping test_paged_bfs_star_graph: GPU not available");
+            return;
+        }
+
+        let device = GpuDevice::new().await.unwrap();
+
+        // Create star graph: center node 0 connected to all others
+        let mut graph = CsrGraph::new();
+        for i in 1..20 {
+            graph.add_edge(NodeId(0), NodeId(i), 1.0).unwrap();
+        }
+
+        let result = gpu_bfs_paged(&device, &graph, NodeId(0)).await.unwrap();
+
+        assert_eq!(result.distance(NodeId(0)), Some(0));
+        // All other nodes at distance 1
+        for i in 1..20 {
+            assert_eq!(result.distance(NodeId(i)), Some(1));
+        }
+        assert_eq!(result.visited_count, 20);
+    }
+
+    #[tokio::test]
+    async fn test_paged_bfs_multiple_levels() {
+        if !GpuDevice::is_gpu_available().await {
+            eprintln!("⚠️  Skipping test_paged_bfs_multiple_levels: GPU not available");
+            return;
+        }
+
+        let device = GpuDevice::new().await.unwrap();
+
+        // Create multi-level tree
+        let mut graph = CsrGraph::new();
+        // Level 0: node 0
+        // Level 1: nodes 1, 2
+        // Level 2: nodes 3, 4, 5, 6
+        graph.add_edge(NodeId(0), NodeId(1), 1.0).unwrap();
+        graph.add_edge(NodeId(0), NodeId(2), 1.0).unwrap();
+        graph.add_edge(NodeId(1), NodeId(3), 1.0).unwrap();
+        graph.add_edge(NodeId(1), NodeId(4), 1.0).unwrap();
+        graph.add_edge(NodeId(2), NodeId(5), 1.0).unwrap();
+        graph.add_edge(NodeId(2), NodeId(6), 1.0).unwrap();
+
+        let result = gpu_bfs_paged(&device, &graph, NodeId(0)).await.unwrap();
+
+        assert_eq!(result.distance(NodeId(0)), Some(0));
+        assert_eq!(result.distance(NodeId(1)), Some(1));
+        assert_eq!(result.distance(NodeId(2)), Some(1));
+        assert_eq!(result.distance(NodeId(3)), Some(2));
+        assert_eq!(result.distance(NodeId(4)), Some(2));
+        assert_eq!(result.distance(NodeId(5)), Some(2));
+        assert_eq!(result.distance(NodeId(6)), Some(2));
+        assert_eq!(result.visited_count, 7);
+    }
+
+    #[tokio::test]
+    async fn test_paged_bfs_with_duplicate_edges() {
+        if !GpuDevice::is_gpu_available().await {
+            eprintln!("⚠️  Skipping test_paged_bfs_with_duplicate_edges: GPU not available");
+            return;
+        }
+
+        let device = GpuDevice::new().await.unwrap();
+
+        // Graph with multiple paths between nodes
+        let mut graph = CsrGraph::new();
+        graph.add_edge(NodeId(0), NodeId(1), 1.0).unwrap();
+        graph.add_edge(NodeId(0), NodeId(2), 1.0).unwrap();
+        graph.add_edge(NodeId(1), NodeId(3), 1.0).unwrap();
+        graph.add_edge(NodeId(2), NodeId(3), 1.0).unwrap(); // Two paths to 3
+
+        let result = gpu_bfs_paged(&device, &graph, NodeId(0)).await.unwrap();
+
+        assert_eq!(result.distance(NodeId(0)), Some(0));
+        assert_eq!(result.distance(NodeId(1)), Some(1));
+        assert_eq!(result.distance(NodeId(2)), Some(1));
+        assert_eq!(result.distance(NodeId(3)), Some(2)); // Shortest path
+        assert_eq!(result.visited_count, 4);
+    }
+
+    #[tokio::test]
+    async fn test_paged_bfs_empty_graph() {
+        if !GpuDevice::is_gpu_available().await {
+            eprintln!("⚠️  Skipping test_paged_bfs_empty_graph: GPU not available");
+            return;
+        }
+
+        let device = GpuDevice::new().await.unwrap();
+
+        // Single node, no edges
+        let mut graph = CsrGraph::new();
+        graph.add_edge(NodeId(0), NodeId(0), 1.0).unwrap(); // Self-loop to create node
+
+        let result = gpu_bfs_paged(&device, &graph, NodeId(0)).await.unwrap();
+
+        assert_eq!(result.distance(NodeId(0)), Some(0));
+        assert_eq!(result.visited_count, 1);
     }
 }

@@ -31,6 +31,11 @@ impl GpuMemoryLimits {
     /// # Errors
     ///
     /// Returns error if GPU device is not available
+    #[allow(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        clippy::cast_precision_loss
+    )]
     pub fn detect(device: &GpuDevice) -> Result<Self> {
         // Get adapter limits from wgpu
         let limits = device.device().limits();
@@ -55,6 +60,7 @@ impl GpuMemoryLimits {
 
     /// Check if graph fits entirely in VRAM
     #[must_use]
+    #[allow(clippy::cast_possible_truncation)]
     pub fn fits_in_vram(&self, graph_size_bytes: usize) -> bool {
         graph_size_bytes <= self.usable_vram as usize
     }
@@ -62,7 +68,7 @@ impl GpuMemoryLimits {
     /// Calculate number of morsels needed for given size
     #[must_use]
     pub fn morsels_needed(&self, size_bytes: usize) -> usize {
-        (size_bytes + self.morsel_size - 1) / self.morsel_size
+        size_bytes.div_ceil(self.morsel_size)
     }
 
     /// Get recommended tile size in nodes for chunking
@@ -102,7 +108,7 @@ mod tests {
     #[test]
     fn test_fits_in_vram() {
         let limits = GpuMemoryLimits {
-            total_vram: 8 * 1024 * 1024 * 1024, // 8GB
+            total_vram: 8 * 1024 * 1024 * 1024,  // 8GB
             usable_vram: 5 * 1024 * 1024 * 1024, // 5GB usable
             morsel_size: DEFAULT_MORSEL_SIZE,
             max_morsels: 40,

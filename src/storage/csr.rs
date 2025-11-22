@@ -306,7 +306,10 @@ impl CsrGraph {
         let start = self.row_offsets[idx] as usize;
         let end = self.row_offsets[idx + 1] as usize;
 
-        (&self.col_indices[start..end], &self.edge_weights[start..end])
+        (
+            &self.col_indices[start..end],
+            &self.edge_weights[start..end],
+        )
     }
 
     /// Iterate over all nodes and their adjacency lists
@@ -525,5 +528,102 @@ mod tests {
         assert_eq!(row_offsets, &[0, 2, 2, 2]);
         assert_eq!(col_indices, &[1, 2]);
         assert_eq!(weights, &[1.0, 2.0]);
+    }
+
+    #[test]
+    fn test_adjacency() {
+        let edges = vec![
+            (NodeId(0), NodeId(1), 1.5),
+            (NodeId(0), NodeId(2), 2.5),
+            (NodeId(1), NodeId(2), 3.5),
+        ];
+
+        let graph = CsrGraph::from_edge_list(&edges).unwrap();
+
+        // Node 0 has two outgoing edges
+        let (targets, weights) = graph.adjacency(NodeId(0));
+        assert_eq!(targets, &[1, 2]);
+        assert_eq!(weights, &[1.5, 2.5]);
+
+        // Node 1 has one outgoing edge
+        let (targets, weights) = graph.adjacency(NodeId(1));
+        assert_eq!(targets, &[2]);
+        assert_eq!(weights, &[3.5]);
+
+        // Node 2 has no outgoing edges
+        let (targets, weights) = graph.adjacency(NodeId(2));
+        let empty_u32: &[u32] = &[];
+        let empty_f32: &[f32] = &[];
+        assert_eq!(targets, empty_u32);
+        assert_eq!(weights, empty_f32);
+    }
+
+    #[test]
+    fn test_adjacency_out_of_bounds() {
+        let edges = vec![(NodeId(0), NodeId(1), 1.0)];
+        let graph = CsrGraph::from_edge_list(&edges).unwrap();
+
+        // Out of bounds node should return empty slices
+        let (targets, weights) = graph.adjacency(NodeId(999));
+        let empty_u32: &[u32] = &[];
+        let empty_f32: &[f32] = &[];
+        assert_eq!(targets, empty_u32);
+        assert_eq!(weights, empty_f32);
+    }
+
+    #[test]
+    fn test_iter_adjacency() {
+        let edges = vec![
+            (NodeId(0), NodeId(1), 1.0),
+            (NodeId(0), NodeId(2), 2.0),
+            (NodeId(1), NodeId(2), 3.0),
+        ];
+
+        let graph = CsrGraph::from_edge_list(&edges).unwrap();
+
+        let adjacencies: Vec<_> = graph.iter_adjacency().collect();
+
+        assert_eq!(adjacencies.len(), 3);
+
+        // Node 0
+        assert_eq!(adjacencies[0].0, NodeId(0));
+        assert_eq!(adjacencies[0].1, &[1, 2]);
+        assert_eq!(adjacencies[0].2, &[1.0, 2.0]);
+
+        // Node 1
+        assert_eq!(adjacencies[1].0, NodeId(1));
+        assert_eq!(adjacencies[1].1, &[2]);
+        assert_eq!(adjacencies[1].2, &[3.0]);
+
+        // Node 2
+        assert_eq!(adjacencies[2].0, NodeId(2));
+        let empty_u32: &[u32] = &[];
+        let empty_f32: &[f32] = &[];
+        assert_eq!(adjacencies[2].1, empty_u32);
+        assert_eq!(adjacencies[2].2, empty_f32);
+    }
+
+    #[test]
+    fn test_slice_methods() {
+        let edges = vec![(NodeId(0), NodeId(1), 1.0), (NodeId(0), NodeId(2), 2.0)];
+        let graph = CsrGraph::from_edge_list(&edges).unwrap();
+
+        // Test slice methods
+        assert_eq!(graph.row_offsets_slice(), &[0, 2, 2, 2]);
+        assert_eq!(graph.col_indices_slice(), &[1, 2]);
+        assert_eq!(graph.edge_weights_slice(), &[1.0, 2.0]);
+    }
+
+    #[test]
+    fn test_get_node_name_nonexistent() {
+        let graph = CsrGraph::new();
+        assert_eq!(graph.get_node_name(NodeId(0)), None);
+    }
+
+    #[test]
+    fn test_empty_adjacency_iterator() {
+        let graph = CsrGraph::new();
+        let adjacencies: Vec<_> = graph.iter_adjacency().collect();
+        assert_eq!(adjacencies.len(), 0);
     }
 }
