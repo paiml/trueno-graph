@@ -40,8 +40,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let validate_callers = graph.incoming_neighbors(NodeId(2))?;
     println!("\n  validate() called by: {:?}", validate_callers);
-    for caller in &validate_callers {
-        let name = graph.get_node_name(NodeId(*caller)).unwrap_or("unknown");
+    for &caller in validate_callers {
+        let name = graph.get_node_name(NodeId(caller)).unwrap_or("unknown");
         println!("    ← {}", name);
     }
 

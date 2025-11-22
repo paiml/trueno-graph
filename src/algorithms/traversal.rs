@@ -55,7 +55,7 @@ pub fn find_callers(graph: &CsrGraph, target: NodeId, max_depth: usize) -> Resul
                 // Find all incoming neighbors (callers)
                 let callers = graph.incoming_neighbors(NodeId(current))?;
 
-                for &caller in &callers {
+                for &caller in callers {
                     if !visited.contains(&caller) {
                         visited.insert(caller);
                         frontier.push_back(caller);

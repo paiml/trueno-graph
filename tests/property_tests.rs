@@ -64,20 +64,22 @@ proptest! {
         for node_id in 0..graph.num_nodes() {
             let callers = graph.incoming_neighbors(NodeId(node_id as u32)).unwrap();
 
-            // Count expected unique incoming callers (not duplicate edges)
+            // Count expected incoming edges (including duplicates/multi-edges)
             let mut expected: Vec<_> = edges.iter()
                 .filter(|(_, dst, _)| dst.0 == node_id as u32)
                 .map(|(src, _, _)| src.0)
                 .collect();
             expected.sort_unstable();
-            expected.dedup(); // Remove duplicates to count unique callers
 
-            prop_assert_eq!(callers.len(), expected.len());
+            prop_assert_eq!(callers.len(), expected.len(),
+                "Node {}: callers.len()={}, expected.len()={}",
+                node_id, callers.len(), expected.len());
 
-            // All callers should be in expected set
-            for caller in &callers {
-                prop_assert!(expected.contains(caller));
-            }
+            // Convert callers to sorted vec for comparison
+            let mut callers_sorted = callers.to_vec();
+            callers_sorted.sort_unstable();
+
+            prop_assert_eq!(callers_sorted, expected);
         }
     }
 }

@@ -105,13 +105,17 @@ fn bench_pagerank(c: &mut Criterion) {
 }
 
 /// Benchmark: Neighbor queries (outgoing vs incoming)
+///
+/// Demonstrates O(1) performance for both outgoing (forward CSR) and
+/// incoming (reverse CSR) neighbor queries. Prior to Phase 3, incoming
+/// neighbors required O(E) scan. With reverse CSR, both are O(1).
 fn bench_neighbor_queries(c: &mut Criterion) {
     let mut group = c.benchmark_group("neighbor_queries");
 
     let edges = generate_scale_free_graph(1000, 5);
     let graph = CsrGraph::from_edge_list(&edges).unwrap();
 
-    group.bench_function("outgoing_neighbors", |b| {
+    group.bench_function("outgoing_neighbors_O1", |b| {
         b.iter(|| {
             for node in 0..100 {
                 let neighbors = graph.outgoing_neighbors(NodeId(node)).unwrap();
@@ -120,7 +124,7 @@ fn bench_neighbor_queries(c: &mut Criterion) {
         });
     });
 
-    group.bench_function("incoming_neighbors", |b| {
+    group.bench_function("incoming_neighbors_O1", |b| {
         b.iter(|| {
             for node in 0..100 {
                 let neighbors = graph.incoming_neighbors(NodeId(node)).unwrap();

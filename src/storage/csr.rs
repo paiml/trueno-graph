@@ -23,7 +23,8 @@ pub struct NodeId(pub u32);
 /// CSR (Compressed Sparse Row) graph
 ///
 /// Optimized for:
-/// - O(1) access to outgoing edges
+/// - O(1) access to outgoing edges (via forward CSR)
+/// - O(1) access to incoming edges (via reverse CSR)
 /// - GPU-friendly memory layout
 /// - Sparse matrix operations (via aprender)
 ///
@@ -41,17 +42,31 @@ pub struct NodeId(pub u32);
 /// ```
 #[derive(Debug, Clone)]
 pub struct CsrGraph {
-    /// Row offsets: node i's edges start at `row_offsets`[i]
+    /// Forward CSR: Row offsets for outgoing edges
+    /// node i's edges start at `row_offsets`[i]
     /// Length: `num_nodes` + 1
     row_offsets: Vec<u32>,
 
-    /// Column indices: edge targets
+    /// Forward CSR: Column indices (edge targets)
     /// Length: `num_edges`
     col_indices: Vec<u32>,
 
-    /// Edge weights (e.g., call counts, complexity)
+    /// Forward CSR: Edge weights
     /// Length: `num_edges`
     edge_weights: Vec<f32>,
+
+    /// Reverse CSR: Row offsets for incoming edges
+    /// node i's incoming edges start at `rev_row_offsets`[i]
+    /// Length: `num_nodes` + 1
+    rev_row_offsets: Vec<u32>,
+
+    /// Reverse CSR: Column indices (edge sources)
+    /// Length: `num_edges`
+    rev_col_indices: Vec<u32>,
+
+    /// Reverse CSR: Edge weights (same as forward, but reordered)
+    /// Length: `num_edges`
+    rev_edge_weights: Vec<f32>,
 
     /// Node names (for debugging/export)
     node_names: HashMap<NodeId, String>,
@@ -68,6 +83,9 @@ impl CsrGraph {
             row_offsets: vec![0], // Start with single offset
             col_indices: Vec::new(),
             edge_weights: Vec::new(),
+            rev_row_offsets: vec![0], // Reverse CSR offsets
+            rev_col_indices: Vec::new(),
+            rev_edge_weights: Vec::new(),
             node_names: HashMap::new(),
             num_nodes: 0,
         }
@@ -96,13 +114,16 @@ impl CsrGraph {
 
         let num_nodes = (max_node + 1) as usize;
 
-        // Build adjacency list (temporary)
+        // Build adjacency lists (temporary) for both forward and reverse
         let mut adj_list: Vec<Vec<(u32, f32)>> = vec![Vec::new(); num_nodes];
+        let mut rev_adj_list: Vec<Vec<(u32, f32)>> = vec![Vec::new(); num_nodes];
+
         for (src, dst, weight) in edges {
             adj_list[src.0 as usize].push((dst.0, *weight));
+            rev_adj_list[dst.0 as usize].push((src.0, *weight)); // Reverse: dst ← src
         }
 
-        // Convert to CSR
+        // Build forward CSR
         let mut row_offsets = Vec::with_capacity(num_nodes + 1);
         let mut col_indices = Vec::new();
         let mut edge_weights_vec = Vec::new();
@@ -122,10 +143,33 @@ impl CsrGraph {
             }
         }
 
+        // Build reverse CSR
+        let mut rev_row_offsets = Vec::with_capacity(num_nodes + 1);
+        let mut rev_col_indices = Vec::new();
+        let mut rev_edge_weights_vec = Vec::new();
+
+        let mut rev_offset = 0_u32;
+        rev_row_offsets.push(rev_offset);
+
+        for rev_neighbors in &rev_adj_list {
+            #[allow(clippy::cast_possible_truncation)]
+            let len_u32 = rev_neighbors.len() as u32;
+            rev_offset += len_u32;
+            rev_row_offsets.push(rev_offset);
+
+            for (source, weight) in rev_neighbors {
+                rev_col_indices.push(*source);
+                rev_edge_weights_vec.push(*weight);
+            }
+        }
+
         Ok(Self {
             row_offsets,
             col_indices,
             edge_weights: edge_weights_vec,
+            rev_row_offsets,
+            rev_col_indices,
+            rev_edge_weights: rev_edge_weights_vec,
             node_names: HashMap::new(),
             num_nodes,
         })
@@ -145,16 +189,27 @@ impl CsrGraph {
             self.expand_to(max_node + 1);
         }
 
-        // Find insertion point (maintain sorted order by source)
+        // Insert forward edge (src → dst)
         let src_idx = src.0 as usize;
         let end = self.row_offsets[src_idx + 1] as usize;
 
-        // Insert edge
         self.col_indices.insert(end, dst.0);
         self.edge_weights.insert(end, weight);
 
         // Update row offsets for all nodes after src
         for offset in &mut self.row_offsets[src_idx + 1..] {
+            *offset += 1;
+        }
+
+        // Insert reverse edge (dst ← src)
+        let dst_idx = dst.0 as usize;
+        let rev_end = self.rev_row_offsets[dst_idx + 1] as usize;
+
+        self.rev_col_indices.insert(rev_end, src.0);
+        self.rev_edge_weights.insert(rev_end, weight);
+
+        // Update reverse row offsets for all nodes after dst
+        for offset in &mut self.rev_row_offsets[dst_idx + 1..] {
             *offset += 1;
         }
 
@@ -180,25 +235,21 @@ impl CsrGraph {
 
     /// Get incoming neighbors (callers) of a node
     ///
-    /// Note: This requires a full scan (O(E)). For frequent queries, build a reverse CSR.
+    /// Returns O(1) access to incoming edges via reverse CSR.
     ///
     /// # Errors
     ///
     /// Returns error if node ID is out of bounds
-    pub fn incoming_neighbors(&self, target: NodeId) -> Result<Vec<u32>> {
+    pub fn incoming_neighbors(&self, target: NodeId) -> Result<&[u32]> {
         if (target.0 as usize) >= self.num_nodes {
             return Err(anyhow!("Node ID {} out of bounds", target.0));
         }
 
-        let mut callers = Vec::new();
+        let idx = target.0 as usize;
+        let start = self.rev_row_offsets[idx] as usize;
+        let end = self.rev_row_offsets[idx + 1] as usize;
 
-        for (node_id, neighbors) in self.iter_adjacency() {
-            if neighbors.iter().any(|(dst, _)| *dst == target.0) {
-                callers.push(node_id);
-            }
-        }
-
-        Ok(callers)
+        Ok(&self.rev_col_indices[start..end])
     }
 
     /// Set node name (for debugging/export)
@@ -258,6 +309,12 @@ impl CsrGraph {
         let last_offset = *self.row_offsets.last().unwrap_or(&0);
         for _ in self.num_nodes..new_size {
             self.row_offsets.push(last_offset);
+        }
+
+        // Add reverse row offsets for new nodes
+        let rev_last_offset = *self.rev_row_offsets.last().unwrap_or(&0);
+        for _ in self.num_nodes..new_size {
+            self.rev_row_offsets.push(rev_last_offset);
         }
 
         self.num_nodes = new_size;
@@ -333,7 +390,82 @@ mod tests {
         let graph = CsrGraph::from_edge_list(&edges).unwrap();
 
         let callers = graph.incoming_neighbors(NodeId(2)).unwrap();
-        assert_eq!(callers, vec![0, 1]);
+        assert_eq!(callers.len(), 2);
+        assert!(callers.contains(&0));
+        assert!(callers.contains(&1));
+    }
+
+    #[test]
+    fn test_reverse_csr_structure() {
+        // Build a simple graph to verify reverse CSR structure
+        let edges = vec![
+            (NodeId(0), NodeId(1), 1.0),  // 0 → 1
+            (NodeId(0), NodeId(2), 2.0),  // 0 → 2
+            (NodeId(1), NodeId(2), 3.0),  // 1 → 2
+        ];
+
+        let graph = CsrGraph::from_edge_list(&edges).unwrap();
+
+        // Node 0: no incoming edges
+        let empty: &[u32] = &[];
+        assert_eq!(graph.incoming_neighbors(NodeId(0)).unwrap(), empty);
+
+        // Node 1: incoming from 0
+        assert_eq!(graph.incoming_neighbors(NodeId(1)).unwrap(), &[0]);
+
+        // Node 2: incoming from 0 and 1
+        let node2_incoming = graph.incoming_neighbors(NodeId(2)).unwrap();
+        assert_eq!(node2_incoming.len(), 2);
+        assert!(node2_incoming.contains(&0));
+        assert!(node2_incoming.contains(&1));
+    }
+
+    #[test]
+    fn test_reverse_csr_multi_edges() {
+        // Test that reverse CSR correctly handles multi-edges (duplicate edges)
+        let edges = vec![
+            (NodeId(0), NodeId(1), 1.0),
+            (NodeId(0), NodeId(1), 2.0),  // Duplicate edge with different weight
+            (NodeId(2), NodeId(1), 3.0),
+        ];
+
+        let graph = CsrGraph::from_edge_list(&edges).unwrap();
+
+        // Node 1 should have 3 incoming edges (2 from node 0, 1 from node 2)
+        let incoming = graph.incoming_neighbors(NodeId(1)).unwrap();
+        assert_eq!(incoming.len(), 3);
+
+        // Count occurrences
+        let count_0 = incoming.iter().filter(|&&x| x == 0).count();
+        let count_2 = incoming.iter().filter(|&&x| x == 2).count();
+
+        assert_eq!(count_0, 2, "Should have 2 edges from node 0");
+        assert_eq!(count_2, 1, "Should have 1 edge from node 2");
+    }
+
+    #[test]
+    fn test_reverse_csr_with_add_edge() {
+        // Test that reverse CSR is correctly updated when using add_edge
+        let mut graph = CsrGraph::new();
+
+        graph.add_edge(NodeId(0), NodeId(1), 1.0).unwrap();
+        graph.add_edge(NodeId(2), NodeId(1), 2.0).unwrap();
+
+        // Node 1 should have incoming edges from 0 and 2
+        let incoming = graph.incoming_neighbors(NodeId(1)).unwrap();
+        assert_eq!(incoming.len(), 2);
+        assert!(incoming.contains(&0));
+        assert!(incoming.contains(&2));
+
+        // Add another edge
+        graph.add_edge(NodeId(3), NodeId(1), 3.0).unwrap();
+
+        // Now node 1 should have 3 incoming edges
+        let incoming = graph.incoming_neighbors(NodeId(1)).unwrap();
+        assert_eq!(incoming.len(), 3);
+        assert!(incoming.contains(&0));
+        assert!(incoming.contains(&2));
+        assert!(incoming.contains(&3));
     }
 
     #[test]
