@@ -100,9 +100,7 @@ pub fn louvain(graph: &CsrGraph) -> Result<CommunityDetectionResult> {
         .map(|community| {
             community
                 .into_iter()
-                .filter_map(|node_id| {
-                    u32::try_from(node_id).ok().map(NodeId)
-                })
+                .filter_map(|node_id| u32::try_from(node_id).ok().map(NodeId))
                 .collect()
         })
         .filter(|community: &Vec<NodeId>| !community.is_empty()) // Remove empty communities
@@ -155,7 +153,10 @@ mod tests {
 
         let result = louvain(&graph).unwrap();
 
-        assert_eq!(result.num_communities, 1, "Triangle should form 1 community");
+        assert_eq!(
+            result.num_communities, 1,
+            "Triangle should form 1 community"
+        );
 
         // All nodes should be in the same community
         let comm_0 = result.get_community(NodeId(0));

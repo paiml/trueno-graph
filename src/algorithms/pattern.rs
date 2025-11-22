@@ -267,7 +267,11 @@ fn find_generic_patterns(_graph: &CsrGraph, pattern: &Pattern) -> Result<Vec<Pat
 }
 
 /// Helper: Find cycles of specific length starting from a node
-fn find_cycles_from_node(graph: &CsrGraph, start: NodeId, target_length: usize) -> Vec<Vec<NodeId>> {
+fn find_cycles_from_node(
+    graph: &CsrGraph,
+    start: NodeId,
+    target_length: usize,
+) -> Vec<Vec<NodeId>> {
     let mut cycles = Vec::new();
     let mut path = vec![start];
     let mut visited = HashSet::new();
@@ -312,19 +316,13 @@ fn dfs_find_cycles(
         for &neighbor_id in neighbors {
             let neighbor = NodeId(neighbor_id);
 
-            if !visited.contains(&neighbor_id) || (neighbor == start && path.len() == target_length - 1) {
+            if !visited.contains(&neighbor_id)
+                || (neighbor == start && path.len() == target_length - 1)
+            {
                 visited.insert(neighbor_id);
                 path.push(neighbor);
 
-                dfs_find_cycles(
-                    graph,
-                    neighbor,
-                    start,
-                    path,
-                    visited,
-                    target_length,
-                    cycles,
-                );
+                dfs_find_cycles(graph, neighbor, start, path, visited, target_length, cycles);
 
                 path.pop();
                 visited.remove(&neighbor_id);
