@@ -50,3 +50,19 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+- id: p3-gpu-pagerank
+  github_issue: null
+  item_type: task
+  title: 'New task: p3-gpu-pagerank'
+  status: completed
+  priority: medium
+  assigned_to: null
+  created: 2025-11-22T19:06:46.621505523+00:00
+  updated: 2025-11-22T19:11:39.156120063+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
