@@ -18,8 +18,10 @@
 //! cargo build --features gpu
 //! ```
 
+mod bfs;
 mod buffer;
 mod device;
 
+pub use bfs::{gpu_bfs, GpuBfsResult};
 pub use buffer::GpuCsrBuffers;
 pub use device::{GpuDevice, GpuDeviceError};

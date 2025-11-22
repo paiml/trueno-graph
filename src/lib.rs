@@ -53,7 +53,7 @@ pub use algorithms::{bfs, find_callers, pagerank};
 pub use storage::{CsrGraph, NodeId};
 
 #[cfg(feature = "gpu")]
-pub use gpu::GpuDevice;
+pub use gpu::{gpu_bfs, GpuBfsResult, GpuCsrBuffers, GpuDevice};
 
 // Error type
 pub use anyhow::{Error, Result};
