@@ -70,11 +70,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'New task: p3-gpu-benchmarks'
-  status: inprogress
+  status: completed
   priority: medium
   assigned_to: null
   created: 2025-11-22T19:13:37.551921229+00:00
-  updated: 2025-11-22T19:13:37.551921229+00:00
+  updated: 2025-11-22T19:18:38.009555399+00:00
   spec: null
   acceptance_criteria: []
   phases: []
