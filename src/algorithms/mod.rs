@@ -4,8 +4,10 @@
 
 pub mod louvain;
 pub mod pagerank;
+pub mod pattern;
 pub mod traversal;
 
 pub use louvain::{louvain, CommunityDetectionResult};
 pub use pagerank::pagerank;
+pub use pattern::{find_patterns, Pattern, PatternMatch, Severity};
 pub use traversal::{bfs, find_callers};
