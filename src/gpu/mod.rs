@@ -21,7 +21,9 @@
 mod bfs;
 mod buffer;
 mod device;
+mod pagerank;
 
 pub use bfs::{gpu_bfs, GpuBfsResult};
 pub use buffer::GpuCsrBuffers;
 pub use device::{GpuDevice, GpuDeviceError};
+pub use pagerank::{gpu_pagerank, GpuPageRankResult};
