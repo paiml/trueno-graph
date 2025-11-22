@@ -131,10 +131,7 @@ mod tests {
     #[test]
     fn test_find_callers_direct() {
         // Graph: 0 → 2, 1 → 2 (both call 2)
-        let edges = vec![
-            (NodeId(0), NodeId(2), 1.0),
-            (NodeId(1), NodeId(2), 1.0),
-        ];
+        let edges = vec![(NodeId(0), NodeId(2), 1.0), (NodeId(1), NodeId(2), 1.0)];
         let graph = CsrGraph::from_edge_list(&edges).unwrap();
 
         let callers = find_callers(&graph, NodeId(2), 1).unwrap();
@@ -146,10 +143,7 @@ mod tests {
     #[test]
     fn test_find_callers_transitive() {
         // Graph: 0 → 1 → 2 (0 transitively calls 2)
-        let edges = vec![
-            (NodeId(0), NodeId(1), 1.0),
-            (NodeId(1), NodeId(2), 1.0),
-        ];
+        let edges = vec![(NodeId(0), NodeId(1), 1.0), (NodeId(1), NodeId(2), 1.0)];
         let graph = CsrGraph::from_edge_list(&edges).unwrap();
 
         let callers = find_callers(&graph, NodeId(2), 10).unwrap();
@@ -189,10 +183,7 @@ mod tests {
 
     #[test]
     fn test_bfs_simple() {
-        let edges = vec![
-            (NodeId(0), NodeId(1), 1.0),
-            (NodeId(1), NodeId(2), 1.0),
-        ];
+        let edges = vec![(NodeId(0), NodeId(1), 1.0), (NodeId(1), NodeId(2), 1.0)];
         let graph = CsrGraph::from_edge_list(&edges).unwrap();
 
         let reachable = bfs(&graph, NodeId(0)).unwrap();

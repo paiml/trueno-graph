@@ -26,7 +26,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     graph.set_node_name(NodeId(3), "execute".to_string());
     graph.set_node_name(NodeId(4), "cleanup".to_string());
 
-    println!("  ✅ Graph built: {} nodes, {} edges\n", graph.num_nodes(), graph.num_edges());
+    println!(
+        "  ✅ Graph built: {} nodes, {} edges\n",
+        graph.num_nodes(),
+        graph.num_edges()
+    );
 
     // 2. Query neighbors
     println!("🔍 Querying graph...");
@@ -55,7 +59,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // 4. Load from Parquet
     println!("\n📂 Loading from Parquet...");
     let loaded = CsrGraph::read_parquet(&path).await?;
-    println!("  ✅ Loaded: {} nodes, {} edges", loaded.num_nodes(), loaded.num_edges());
+    println!(
+        "  ✅ Loaded: {} nodes, {} edges",
+        loaded.num_nodes(),
+        loaded.num_edges()
+    );
 
     // Verify roundtrip
     assert_eq!(loaded.num_nodes(), graph.num_nodes());

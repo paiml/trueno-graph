@@ -132,7 +132,7 @@ impl CsrGraph {
         row_offsets.push(offset);
 
         for neighbors in &adj_list {
-            #[allow(clippy::cast_possible_truncation)]  // Graphs >4B nodes not supported yet
+            #[allow(clippy::cast_possible_truncation)] // Graphs >4B nodes not supported yet
             let len_u32 = neighbors.len() as u32;
             offset += len_u32;
             row_offsets.push(offset);
@@ -294,7 +294,7 @@ impl CsrGraph {
             // Leak to satisfy lifetime (temporary hack for MVP)
             let static_neighbors: &'static [(u32, f32)] = Box::leak(neighbors.into_boxed_slice());
 
-            #[allow(clippy::cast_possible_truncation)]  // Graphs >4B nodes not supported yet
+            #[allow(clippy::cast_possible_truncation)] // Graphs >4B nodes not supported yet
             (node_id as u32, static_neighbors)
         })
     }
@@ -365,10 +365,7 @@ mod tests {
 
     #[test]
     fn test_outgoing_neighbors() {
-        let edges = vec![
-            (NodeId(0), NodeId(1), 1.0),
-            (NodeId(0), NodeId(2), 2.0),
-        ];
+        let edges = vec![(NodeId(0), NodeId(1), 1.0), (NodeId(0), NodeId(2), 2.0)];
 
         let graph = CsrGraph::from_edge_list(&edges).unwrap();
 
@@ -382,10 +379,7 @@ mod tests {
 
     #[test]
     fn test_incoming_neighbors() {
-        let edges = vec![
-            (NodeId(0), NodeId(2), 1.0),
-            (NodeId(1), NodeId(2), 1.0),
-        ];
+        let edges = vec![(NodeId(0), NodeId(2), 1.0), (NodeId(1), NodeId(2), 1.0)];
 
         let graph = CsrGraph::from_edge_list(&edges).unwrap();
 
@@ -399,9 +393,9 @@ mod tests {
     fn test_reverse_csr_structure() {
         // Build a simple graph to verify reverse CSR structure
         let edges = vec![
-            (NodeId(0), NodeId(1), 1.0),  // 0 → 1
-            (NodeId(0), NodeId(2), 2.0),  // 0 → 2
-            (NodeId(1), NodeId(2), 3.0),  // 1 → 2
+            (NodeId(0), NodeId(1), 1.0), // 0 → 1
+            (NodeId(0), NodeId(2), 2.0), // 0 → 2
+            (NodeId(1), NodeId(2), 3.0), // 1 → 2
         ];
 
         let graph = CsrGraph::from_edge_list(&edges).unwrap();
@@ -425,7 +419,7 @@ mod tests {
         // Test that reverse CSR correctly handles multi-edges (duplicate edges)
         let edges = vec![
             (NodeId(0), NodeId(1), 1.0),
-            (NodeId(0), NodeId(1), 2.0),  // Duplicate edge with different weight
+            (NodeId(0), NodeId(1), 2.0), // Duplicate edge with different weight
             (NodeId(2), NodeId(1), 3.0),
         ];
 
@@ -496,10 +490,7 @@ mod tests {
 
     #[test]
     fn test_csr_components() {
-        let edges = vec![
-            (NodeId(0), NodeId(1), 1.0),
-            (NodeId(0), NodeId(2), 2.0),
-        ];
+        let edges = vec![(NodeId(0), NodeId(1), 1.0), (NodeId(0), NodeId(2), 2.0)];
 
         let graph = CsrGraph::from_edge_list(&edges).unwrap();
         let (row_offsets, col_indices, weights) = graph.csr_components();

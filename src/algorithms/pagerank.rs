@@ -54,8 +54,8 @@ const DAMPING_FACTOR: f32 = 0.85;
 /// assert_eq!(scores.len(), 3);
 /// assert!((scores.iter().sum::<f32>() - 1.0).abs() < 1e-5); // Sum = 1.0
 /// ```
-#[allow(clippy::cast_precision_loss)]  // Graphs >16M nodes unlikely
-#[allow(clippy::cast_possible_truncation)]  // Graphs with >4B edges unlikely
+#[allow(clippy::cast_precision_loss)] // Graphs >16M nodes unlikely
+#[allow(clippy::cast_possible_truncation)] // Graphs with >4B edges unlikely
 pub fn pagerank(graph: &CsrGraph, max_iterations: usize, tolerance: f32) -> Result<Vec<f32>> {
     let n = graph.num_nodes();
 
@@ -81,7 +81,7 @@ pub fn pagerank(graph: &CsrGraph, max_iterations: usize, tolerance: f32) -> Resu
     }
 
     // Power iteration
-    #[allow(unused_variables)]  // iteration only used in test builds
+    #[allow(unused_variables)] // iteration only used in test builds
     for iteration in 0..max_iterations {
         // Reset new ranks to teleport value
         new_ranks.fill(teleport);
@@ -117,7 +117,11 @@ pub fn pagerank(graph: &CsrGraph, max_iterations: usize, tolerance: f32) -> Resu
 
         if diff < tolerance {
             #[cfg(test)]
-            eprintln!("PageRank converged after {} iterations (diff={:.2e})", iteration + 1, diff);
+            eprintln!(
+                "PageRank converged after {} iterations (diff={:.2e})",
+                iteration + 1,
+                diff
+            );
             break;
         }
     }
@@ -133,10 +137,7 @@ mod tests {
     #[test]
     fn test_pagerank_simple_chain() {
         // Linear chain: 0 → 1 → 2
-        let edges = vec![
-            (NodeId(0), NodeId(1), 1.0),
-            (NodeId(1), NodeId(2), 1.0),
-        ];
+        let edges = vec![(NodeId(0), NodeId(1), 1.0), (NodeId(1), NodeId(2), 1.0)];
         let graph = CsrGraph::from_edge_list(&edges).unwrap();
 
         let scores = pagerank(&graph, 20, 1e-6).unwrap();
@@ -149,8 +150,14 @@ mod tests {
         assert!((sum - 1.0).abs() < 1e-5, "Sum = {sum}");
 
         // In a chain, last node gets highest score (sink node)
-        assert!(scores[2] > scores[1], "Node 2 should have higher score than 1");
-        assert!(scores[1] > scores[0], "Node 1 should have higher score than 0");
+        assert!(
+            scores[2] > scores[1],
+            "Node 2 should have higher score than 1"
+        );
+        assert!(
+            scores[1] > scores[0],
+            "Node 1 should have higher score than 0"
+        );
     }
 
     #[test]

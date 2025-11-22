@@ -41,12 +41,12 @@
 #![warn(clippy::pedantic)]
 #![allow(clippy::module_name_repetitions)]
 
-pub mod storage;
 pub mod algorithms;
+pub mod storage;
 
 // Re-export core types
+pub use algorithms::{bfs, find_callers, pagerank};
 pub use storage::{CsrGraph, NodeId};
-pub use algorithms::{find_callers, bfs, pagerank};
 
 // Error type
 pub use anyhow::{Error, Result};

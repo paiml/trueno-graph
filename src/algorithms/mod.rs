@@ -2,8 +2,8 @@
 //!
 //! Phase 2 implementations leveraging aprender for sparse matrix operations.
 
-pub mod traversal;
 pub mod pagerank;
+pub mod traversal;
 
-pub use traversal::{find_callers, bfs};
 pub use pagerank::pagerank;
+pub use traversal::{bfs, find_callers};

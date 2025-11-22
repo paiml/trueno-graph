@@ -156,14 +156,16 @@ proptest! {
 }
 
 // Helper: Generate arbitrary edge list
-fn prop_edge_list(num_edges: impl Strategy<Value = usize>, max_node: impl Strategy<Value = u32>) -> impl Strategy<Value = Vec<(NodeId, NodeId, f32)>> {
+fn prop_edge_list(
+    num_edges: impl Strategy<Value = usize>,
+    max_node: impl Strategy<Value = u32>,
+) -> impl Strategy<Value = Vec<(NodeId, NodeId, f32)>> {
     (num_edges, max_node).prop_flat_map(|(n, max_node)| {
         // Ensure max_node is at least 1 to avoid empty range
         let max_node = max_node.max(1);
         prop::collection::vec(
-            (0..max_node, 0..max_node, 0.0..100.0f32).prop_map(|(src, dst, weight)| {
-                (NodeId(src), NodeId(dst), weight)
-            }),
+            (0..max_node, 0..max_node, 0.0..100.0f32)
+                .prop_map(|(src, dst, weight)| (NodeId(src), NodeId(dst), weight)),
             0..=n,
         )
     })

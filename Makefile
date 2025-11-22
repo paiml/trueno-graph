@@ -11,7 +11,8 @@ help:
 	@echo "  make bench         - Run Criterion benchmarks"
 	@echo "  make quality       - Run all quality gates (pmat + certeza)"
 	@echo "  make coverage      - Generate test coverage report"
-	@echo "  make lint          - Run clippy + rustfmt"
+	@echo "  make lint          - Check clippy + formatting (CI mode)"
+	@echo "  make lint-fix      - Auto-fix clippy + formatting issues"
 	@echo "  make docs          - Build rustdoc documentation"
 	@echo ""
 	@echo "Development:"
@@ -46,12 +47,21 @@ bench-save: ## Save benchmark baseline
 	cargo bench --bench graph_algorithms -- --save-baseline main
 
 .PHONY: lint
-lint:
-	cargo clippy --all-features -- -D warnings
-	cargo fmt -- --check
+lint: ## Check clippy + formatting (CI mode)
+	@echo "🔍 Running lint checks..."
+	@cargo clippy --all-features -- -D warnings
+	@cargo fmt -- --check
+	@echo "✅ Lint checks passed"
+
+.PHONY: lint-fix
+lint-fix: ## Auto-fix clippy + formatting issues
+	@echo "🔧 Auto-fixing lint issues..."
+	@cargo clippy --all-features --fix --allow-dirty --allow-staged
+	@cargo fmt
+	@echo "✅ Lint issues fixed"
 
 .PHONY: fmt
-fmt:
+fmt: ## Format code with rustfmt
 	cargo fmt
 
 .PHONY: docs

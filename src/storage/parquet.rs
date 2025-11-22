@@ -13,8 +13,8 @@ use anyhow::{Context, Result};
 use arrow::array::{Float32Array, StringArray, UInt32Array};
 use arrow::datatypes::{DataType, Field, Schema};
 use arrow::record_batch::RecordBatch;
-use parquet::arrow::arrow_writer::ArrowWriter;
 use parquet::arrow::arrow_reader::ParquetRecordBatchReaderBuilder;
+use parquet::arrow::arrow_writer::ArrowWriter;
 use parquet::file::properties::WriterProperties;
 use std::fs::File;
 use std::path::Path;
@@ -30,7 +30,7 @@ impl CsrGraph {
     /// # Errors
     ///
     /// Returns error if file I/O fails or Arrow conversion fails
-    #[allow(clippy::unused_async)]  // Async API for future I/O operations
+    #[allow(clippy::unused_async)] // Async API for future I/O operations
     pub async fn write_parquet<P: AsRef<Path>>(&self, path: P) -> Result<()> {
         let base_path = path.as_ref();
 
@@ -48,7 +48,7 @@ impl CsrGraph {
     /// # Errors
     ///
     /// Returns error if files don't exist or Arrow conversion fails
-    #[allow(clippy::unused_async)]  // Async API for future I/O operations
+    #[allow(clippy::unused_async)] // Async API for future I/O operations
     pub async fn read_parquet<P: AsRef<Path>>(path: P) -> Result<Self> {
         let base_path = path.as_ref();
 
@@ -103,11 +103,13 @@ impl CsrGraph {
         .context("Failed to create RecordBatch")?;
 
         // Write to Parquet
-        let file = File::create(&edges_path)
-            .with_context(|| format!("Failed to create {edges_path}"))?;
+        let file =
+            File::create(&edges_path).with_context(|| format!("Failed to create {edges_path}"))?;
 
         let props = WriterProperties::builder()
-            .set_compression(parquet::basic::Compression::ZSTD(parquet::basic::ZstdLevel::try_new(3)?))
+            .set_compression(parquet::basic::Compression::ZSTD(
+                parquet::basic::ZstdLevel::try_new(3)?,
+            ))
             .build();
 
         let mut writer = ArrowWriter::try_new(file, schema, Some(props))?;
@@ -125,7 +127,7 @@ impl CsrGraph {
         let mut names = Vec::new();
 
         for node_id in 0..self.num_nodes() {
-            #[allow(clippy::cast_possible_truncation)]  // Graphs >4B nodes not supported yet
+            #[allow(clippy::cast_possible_truncation)] // Graphs >4B nodes not supported yet
             let node_u32 = node_id as u32;
             node_ids.push(node_u32);
             let name = self
@@ -146,16 +148,17 @@ impl CsrGraph {
         let name_array = Arc::new(StringArray::from(names));
 
         // Create RecordBatch
-        let batch =
-            RecordBatch::try_new(schema.clone(), vec![node_id_array, name_array])
-                .context("Failed to create nodes RecordBatch")?;
+        let batch = RecordBatch::try_new(schema.clone(), vec![node_id_array, name_array])
+            .context("Failed to create nodes RecordBatch")?;
 
         // Write to Parquet
-        let file = File::create(&nodes_path)
-            .with_context(|| format!("Failed to create {nodes_path}"))?;
+        let file =
+            File::create(&nodes_path).with_context(|| format!("Failed to create {nodes_path}"))?;
 
         let props = WriterProperties::builder()
-            .set_compression(parquet::basic::Compression::ZSTD(parquet::basic::ZstdLevel::try_new(3)?))
+            .set_compression(parquet::basic::Compression::ZSTD(
+                parquet::basic::ZstdLevel::try_new(3)?,
+            ))
             .build();
 
         let mut writer = ArrowWriter::try_new(file, schema, Some(props))?;
@@ -168,11 +171,10 @@ impl CsrGraph {
     fn read_edges_parquet(base_path: &Path) -> Result<Vec<(NodeId, NodeId, f32)>> {
         let edges_path = format!("{}_edges.parquet", base_path.display());
 
-        let file = File::open(&edges_path)
-            .with_context(|| format!("Failed to open {edges_path}"))?;
+        let file =
+            File::open(&edges_path).with_context(|| format!("Failed to open {edges_path}"))?;
 
-        let reader = ParquetRecordBatchReaderBuilder::try_new(file)?
-            .build()?;
+        let reader = ParquetRecordBatchReaderBuilder::try_new(file)?.build()?;
 
         let mut edges = Vec::new();
 
@@ -212,11 +214,10 @@ impl CsrGraph {
     fn read_nodes_parquet(base_path: &Path) -> Result<Vec<(NodeId, String)>> {
         let nodes_path = format!("{}_nodes.parquet", base_path.display());
 
-        let file = File::open(&nodes_path)
-            .with_context(|| format!("Failed to open {nodes_path}"))?;
+        let file =
+            File::open(&nodes_path).with_context(|| format!("Failed to open {nodes_path}"))?;
 
-        let reader = ParquetRecordBatchReaderBuilder::try_new(file)?
-            .build()?;
+        let reader = ParquetRecordBatchReaderBuilder::try_new(file)?.build()?;
 
         let mut nodes = Vec::new();
 
@@ -275,10 +276,7 @@ mod tests {
         assert_eq!(loaded.num_edges(), graph.num_edges());
 
         // Verify edges
-        assert_eq!(
-            loaded.outgoing_neighbors(NodeId(0)).unwrap(),
-            &[1, 2]
-        );
+        assert_eq!(loaded.outgoing_neighbors(NodeId(0)).unwrap(), &[1, 2]);
 
         // Verify node names
         assert_eq!(loaded.get_node_name(NodeId(0)), Some("main"));

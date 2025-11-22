@@ -43,9 +43,7 @@ fn test_simple_call_graph() {
 #[test]
 fn test_from_edge_list_performance() {
     // Test building graph from edge list (batch mode)
-    let edges: Vec<_> = (0..1000)
-        .map(|i| (NodeId(i), NodeId(i + 1), 1.0))
-        .collect();
+    let edges: Vec<_> = (0..1000).map(|i| (NodeId(i), NodeId(i + 1), 1.0)).collect();
 
     let graph = CsrGraph::from_edge_list(&edges).unwrap();
 

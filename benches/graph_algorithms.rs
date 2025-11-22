@@ -10,7 +10,10 @@ use std::hint::black_box;
 use trueno_graph::{bfs, find_callers, pagerank, CsrGraph, NodeId};
 
 /// Generate scale-free graph (Barabási-Albert model approximation)
-fn generate_scale_free_graph(num_nodes: usize, edges_per_node: usize) -> Vec<(NodeId, NodeId, f32)> {
+fn generate_scale_free_graph(
+    num_nodes: usize,
+    edges_per_node: usize,
+) -> Vec<(NodeId, NodeId, f32)> {
     let mut edges = Vec::new();
     let mut rng_state = 12345_u64; // Simple LCG for reproducibility
 
@@ -36,12 +39,16 @@ fn bench_csr_construction(c: &mut Criterion) {
     for size in [100, 500, 1000, 5000].iter() {
         let edges = generate_scale_free_graph(*size, 3);
 
-        group.bench_with_input(BenchmarkId::new("from_edge_list", size), &edges, |b, edges| {
-            b.iter(|| {
-                let graph = CsrGraph::from_edge_list(black_box(edges)).unwrap();
-                black_box(graph);
-            });
-        });
+        group.bench_with_input(
+            BenchmarkId::new("from_edge_list", size),
+            &edges,
+            |b, edges| {
+                b.iter(|| {
+                    let graph = CsrGraph::from_edge_list(black_box(edges)).unwrap();
+                    black_box(graph);
+                });
+            },
+        );
     }
 
     group.finish();
@@ -93,12 +100,16 @@ fn bench_pagerank(c: &mut Criterion) {
         let edges = generate_scale_free_graph(*size, 3);
         let graph = CsrGraph::from_edge_list(&edges).unwrap();
 
-        group.bench_with_input(BenchmarkId::new("20_iterations", size), &graph, |b, graph| {
-            b.iter(|| {
-                let scores = pagerank(black_box(graph), 20, 1e-6).unwrap();
-                black_box(scores);
-            });
-        });
+        group.bench_with_input(
+            BenchmarkId::new("20_iterations", size),
+            &graph,
+            |b, graph| {
+                b.iter(|| {
+                    let scores = pagerank(black_box(graph), 20, 1e-6).unwrap();
+                    black_box(scores);
+                });
+            },
+        );
     }
 
     group.finish();
