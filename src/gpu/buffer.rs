@@ -98,7 +98,7 @@ mod tests {
     use crate::NodeId;
 
     #[tokio::test]
-    #[ignore] // Requires GPU hardware
+    #[ignore = "Requires GPU hardware"]
     async fn test_upload_csr_to_gpu() {
         let device = GpuDevice::new().await.unwrap();
 
@@ -115,7 +115,7 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore] // Requires GPU hardware
+    #[ignore = "Requires GPU hardware"]
     async fn test_upload_empty_graph() {
         let device = GpuDevice::new().await.unwrap();
         let graph = CsrGraph::new();

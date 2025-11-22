@@ -379,7 +379,8 @@ mod tests {
     use crate::{CsrGraph, NodeId};
 
     #[tokio::test]
-    #[ignore] // Requires GPU hardware
+    #[ignore = "Requires GPU hardware"]
+    #[allow(clippy::cast_possible_truncation)]
     async fn test_gpu_pagerank_simple_chain() {
         let device = GpuDevice::new().await.unwrap();
 

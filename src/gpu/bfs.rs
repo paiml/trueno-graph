@@ -386,7 +386,7 @@ mod tests {
     use crate::CsrGraph;
 
     #[tokio::test]
-    #[ignore] // Requires GPU hardware
+    #[ignore = "Requires GPU hardware"]
     async fn test_gpu_bfs_simple_chain() {
         let device = GpuDevice::new().await.unwrap();
 
@@ -405,7 +405,7 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore] // Requires GPU hardware
+    #[ignore = "Requires GPU hardware"]
     async fn test_gpu_bfs_disconnected() {
         let device = GpuDevice::new().await.unwrap();
 

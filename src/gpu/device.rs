@@ -165,7 +165,7 @@ mod tests {
     use super::*;
 
     #[tokio::test]
-    #[ignore] // Requires GPU hardware
+    #[ignore = "Requires GPU hardware"]
     async fn test_gpu_device_creation() {
         let device = GpuDevice::new().await;
         assert!(device.is_ok(), "Failed to create GPU device");
@@ -175,14 +175,14 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore] // Requires GPU hardware
+    #[ignore = "Requires GPU hardware"]
     async fn test_gpu_adapter_info() {
         let device = GpuDevice::new().await.unwrap();
         let info = device.info();
 
         // Basic sanity checks
         assert!(!info.name.is_empty(), "Adapter name should not be empty");
-        println!("GPU: {:?}", info);
+        println!("GPU: {info:?}");
     }
 
     #[tokio::test]
