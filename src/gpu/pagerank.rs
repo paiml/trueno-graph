@@ -13,7 +13,7 @@ struct PageRankParams {
     num_nodes: u32,
     damping: f32,
     iteration: u32,
-    _padding: u32,
+    dangling_sum: f32,
 }
 
 /// GPU `PageRank` result
@@ -231,6 +231,13 @@ pub async fn gpu_pagerank(
     // Step 4: Create auxiliary buffers
     let num_nodes = buffers.num_nodes();
 
+    // Initialize scores to 1/N
+    let initial_score = 1.0 / num_nodes as f32;
+
+    // Compute initial dangling sum (nodes with out_degree = 0)
+    let dangling_count = out_degrees.iter().filter(|&&d| d == 0).count();
+    let initial_dangling_sum = dangling_count as f32 * initial_score;
+
     // Params buffer (uniform)
     let params_buffer = device.create_buffer_init(
         "PageRank Params",
@@ -238,13 +245,10 @@ pub async fn gpu_pagerank(
             num_nodes: num_nodes as u32,
             damping,
             iteration: 0,
-            _padding: 0,
+            dangling_sum: initial_dangling_sum,
         }),
         wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
     )?;
-
-    // Initialize scores to 1/N
-    let initial_score = 1.0 / num_nodes as f32;
     let initial_scores = vec![initial_score; num_nodes];
 
     // Current scores buffer (storage)
@@ -274,7 +278,14 @@ pub async fn gpu_pagerank(
 
     // Iteration loop
     for iteration in 0..max_iterations {
-        // Update params with current iteration
+        // Compute dangling sum (sum of ranks from nodes with out_degree = 0)
+        let current_scores = read_scores(device, &current_scores_buffer, num_nodes).await?;
+        let dangling_sum: f32 = (0..num_nodes)
+            .filter(|&i| out_degrees[i] == 0)
+            .map(|i| current_scores[i])
+            .sum();
+
+        // Update params with current iteration and dangling sum
         device.queue().write_buffer(
             &params_buffer,
             0,
@@ -282,7 +293,7 @@ pub async fn gpu_pagerank(
                 num_nodes: num_nodes as u32,
                 damping,
                 iteration: iteration as u32,
-                _padding: 0,
+                dangling_sum,
             }),
         );
 

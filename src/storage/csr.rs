@@ -114,7 +114,7 @@ impl CsrGraph {
 
         let num_nodes = (max_node + 1) as usize;
 
-        // Build adjacency lists (temporary) for both forward and reverse
+        // Build intermediate adjacency lists for both forward and reverse directions
         let mut adj_list: Vec<Vec<(u32, f32)>> = vec![Vec::new(); num_nodes];
         let mut rev_adj_list: Vec<Vec<(u32, f32)>> = vec![Vec::new(); num_nodes];
 

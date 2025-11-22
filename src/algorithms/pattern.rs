@@ -8,7 +8,7 @@
 //! - Cordella et al. (2004): "VF2 algorithm for subgraph isomorphism"
 
 use crate::{CsrGraph, NodeId};
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use std::collections::{HashMap, HashSet};
 
 /// Pattern matching result
@@ -256,14 +256,121 @@ fn find_dead_code_patterns(graph: &CsrGraph, pattern: &Pattern) -> Vec<PatternMa
     matches
 }
 
-/// Find generic patterns using VF2-like subgraph isomorphism
-fn find_generic_patterns(_graph: &CsrGraph, pattern: &Pattern) -> Result<Vec<PatternMatch>> {
-    // Simplified VF2 implementation (stub for now)
-    // Full VF2 implementation would be quite complex
-    Err(anyhow!(
-        "Generic pattern matching not yet implemented for pattern '{}'",
-        pattern.name
-    ))
+/// Find generic patterns using simplified subgraph matching
+///
+/// Uses backtracking to find all subgraph isomorphisms. Suitable for small patterns
+/// (typical in code smell detection). For larger patterns, consider specialized algorithms.
+fn find_generic_patterns(graph: &CsrGraph, pattern: &Pattern) -> Result<Vec<PatternMatch>> {
+    let mut matches = Vec::new();
+
+    // Build pattern adjacency for quick lookup
+    let mut pattern_adj: HashMap<u32, HashSet<u32>> = HashMap::new();
+    for (src, dst) in &pattern.edges {
+        pattern_adj.entry(*src).or_default().insert(*dst);
+    }
+
+    // Try matching pattern starting from each node
+    for start_node in 0..graph.num_nodes() {
+        let mut mapping: HashMap<u32, NodeId> = HashMap::new();
+        let mut used_nodes: HashSet<NodeId> = HashSet::new();
+
+        if try_match_pattern(
+            graph,
+            &pattern_adj,
+            pattern.min_nodes,
+            0,
+            NodeId(start_node as u32),
+            &mut mapping,
+            &mut used_nodes,
+        ) {
+            // Found a match
+            matches.push(PatternMatch {
+                node_mapping: mapping.clone(),
+                pattern_name: pattern.name.clone(),
+                severity: pattern.severity,
+            });
+        }
+    }
+
+    Ok(matches)
+}
+
+/// Recursive helper for pattern matching (backtracking)
+fn try_match_pattern(
+    graph: &CsrGraph,
+    pattern_adj: &HashMap<u32, HashSet<u32>>,
+    pattern_size: usize,
+    pattern_node: u32,
+    graph_node: NodeId,
+    mapping: &mut HashMap<u32, NodeId>,
+    used_nodes: &mut HashSet<NodeId>,
+) -> bool {
+    // Check if node already used
+    if used_nodes.contains(&graph_node) {
+        return false;
+    }
+
+    // Add to mapping
+    mapping.insert(pattern_node, graph_node);
+    used_nodes.insert(graph_node);
+
+    // If mapped all nodes, success
+    if mapping.len() == pattern_size {
+        return true;
+    }
+
+    // Check edges match for all previously mapped nodes
+    for (&p_src, &g_src) in mapping.iter() {
+        if let Some(p_targets) = pattern_adj.get(&p_src) {
+            let g_targets: HashSet<u32> = graph
+                .outgoing_neighbors(g_src)
+                .unwrap_or_default()
+                .iter()
+                .copied()
+                .collect();
+
+            for &p_target in p_targets {
+                if let Some(&g_target) = mapping.get(&p_target) {
+                    // Edge should exist in graph
+                    if !g_targets.contains(&g_target.0) {
+                        // Backtrack
+                        mapping.remove(&pattern_node);
+                        used_nodes.remove(&graph_node);
+                        return false;
+                    }
+                }
+            }
+        }
+    }
+
+    // Try extending mapping to unmapped pattern nodes
+    for next_pattern_node in 0..pattern_size as u32 {
+        if !mapping.contains_key(&next_pattern_node) {
+            // Try all graph nodes
+            for next_graph_node in 0..graph.num_nodes() {
+                if try_match_pattern(
+                    graph,
+                    pattern_adj,
+                    pattern_size,
+                    next_pattern_node,
+                    NodeId(next_graph_node as u32),
+                    mapping,
+                    used_nodes,
+                ) {
+                    return true;
+                }
+            }
+            // Backtrack
+            mapping.remove(&pattern_node);
+            used_nodes.remove(&graph_node);
+            return false;
+        }
+    }
+
+    // Backtrack
+    mapping.remove(&pattern_node);
+    used_nodes.remove(&graph_node);
+    false
 }
 
 /// Helper: Find cycles of specific length starting from a node

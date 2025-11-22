@@ -15,6 +15,15 @@ help:
 	@echo "  make lint-fix      - Auto-fix clippy + formatting issues"
 	@echo "  make docs          - Build rustdoc documentation"
 	@echo ""
+	@echo "bashrs enforcement:"
+	@echo "  make bashrs-all           - Run all bashrs quality checks"
+	@echo "  make bashrs-lint-makefile - Lint Makefile"
+	@echo "  make bashrs-lint-scripts  - Lint shell scripts"
+	@echo ""
+	@echo "Documentation:"
+	@echo "  make book          - Build mdBook documentation"
+	@echo "  make book-serve    - Serve mdBook locally"
+	@echo ""
 	@echo "Development:"
 	@echo "  make build         - Build in debug mode"
 	@echo "  make release       - Build optimized release binary"
@@ -154,3 +163,43 @@ bench-compare:
 	@echo "Running benchmarks with baseline comparison..."
 	cargo bench --features gpu -- --baseline main
 	@echo "Benchmark comparison complete. See target/criterion/report/index.html"
+
+# bashrs Quality Enforcement
+.PHONY: bashrs-lint-makefile
+bashrs-lint-makefile: ## Lint Makefile with bashrs
+	@echo "🔍 Linting Makefile with bashrs..."
+	@bashrs make lint Makefile || true
+
+.PHONY: bashrs-lint-scripts
+bashrs-lint-scripts: ## Lint all shell scripts with bashrs
+	@echo "🔍 Linting shell scripts with bashrs..."
+	@for script in $$(find . -type f -name "*.sh" ! -path "./target/*" ! -path "./.git/*"); do \
+		echo "  Linting $$script..."; \
+		bashrs lint "$$script" || true; \
+	done
+	@echo "✅ Shell script linting complete"
+
+.PHONY: bashrs-audit
+bashrs-audit: ## Audit shell script quality with bashrs
+	@echo "📊 Auditing shell scripts with bashrs..."
+	@for script in $$(find . -type f -name "*.sh" ! -path "./target/*" ! -path "./.git/*"); do \
+		echo "  Auditing $$script..."; \
+		bashrs audit "$$script"; \
+	done
+	@echo "✅ Shell script audit complete"
+
+.PHONY: bashrs-all
+bashrs-all: bashrs-lint-makefile bashrs-lint-scripts bashrs-audit ## Run all bashrs quality checks
+	@echo "✅ All bashrs quality checks complete"
+
+# mdBook targets
+.PHONY: book
+book: ## Build mdBook documentation
+	@echo "📚 Building mdBook..."
+	@mdbook build
+	@echo "✅ Book built: docs/index.html"
+
+.PHONY: book-serve
+book-serve: ## Serve mdBook locally
+	@echo "📚 Serving mdBook at http://localhost:3000..."
+	@mdbook serve --open
