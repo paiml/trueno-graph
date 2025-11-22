@@ -44,7 +44,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     graph.set_node_name(NodeId(3), "validate".to_string());
     graph.set_node_name(NodeId(4), "logger".to_string());
 
-    println!("✓ Built call graph with {} nodes and {} edges", graph.num_nodes(), graph.num_edges());
+    println!(
+        "✓ Built call graph with {} nodes and {} edges",
+        graph.num_nodes(),
+        graph.num_edges()
+    );
     println!();
 
     // Graph Traversal - BFS
@@ -161,8 +165,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let dead_code_matches = find_patterns(&antipattern_graph, &dead_code_pattern)?;
     println!("   Found {} dead code instances", dead_code_matches.len());
     for m in &dead_code_matches {
-        println!("   - Node {:?} (Severity: {:?})",
-            m.node_mapping.get(&0), m.severity);
+        println!(
+            "   - Node {:?} (Severity: {:?})",
+            m.node_mapping.get(&0),
+            m.severity
+        );
     }
     println!();
 
