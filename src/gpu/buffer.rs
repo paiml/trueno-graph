@@ -98,8 +98,12 @@ mod tests {
     use crate::NodeId;
 
     #[tokio::test]
-    #[ignore = "Requires GPU hardware"]
     async fn test_upload_csr_to_gpu() {
+        if !GpuDevice::is_gpu_available().await {
+            eprintln!("⚠️  Skipping test_upload_csr_to_gpu: GPU not available");
+            return;
+        }
+
         let device = GpuDevice::new().await.unwrap();
 
         // Create simple graph: 0 -> 1 -> 2
@@ -115,8 +119,12 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore = "Requires GPU hardware"]
     async fn test_upload_empty_graph() {
+        if !GpuDevice::is_gpu_available().await {
+            eprintln!("⚠️  Skipping test_upload_empty_graph: GPU not available");
+            return;
+        }
+
         let device = GpuDevice::new().await.unwrap();
         let graph = CsrGraph::new();
 

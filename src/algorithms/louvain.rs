@@ -120,9 +120,9 @@ fn convert_to_aprender(graph: &CsrGraph) -> AprenderGraph {
     // Build edge list
     let mut edges = Vec::new();
 
-    for (src, neighbors) in graph.iter_adjacency() {
-        for (dst, weight) in neighbors {
-            edges.push((src as usize, *dst as usize, f64::from(*weight)));
+    for (src, targets, weights) in graph.iter_adjacency() {
+        for (dst, weight) in targets.iter().zip(weights.iter()) {
+            edges.push((src.0 as usize, *dst as usize, f64::from(*weight)));
         }
     }
 

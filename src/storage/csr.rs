@@ -293,27 +293,36 @@ impl CsrGraph {
         &self.edge_weights
     }
 
-    /// Iterate over adjacency list (`node_id`, &[(target, weight)])
-    pub fn iter_adjacency(&self) -> impl Iterator<Item = (u32, &[(u32, f32)])> + '_ {
+    /// Get adjacency list for a specific node
+    ///
+    /// Returns (targets, weights) slices for the node's outgoing edges
+    #[must_use]
+    pub fn adjacency(&self, node_id: NodeId) -> (&[u32], &[f32]) {
+        let idx = node_id.0 as usize;
+        if idx >= self.num_nodes {
+            return (&[], &[]);
+        }
+
+        let start = self.row_offsets[idx] as usize;
+        let end = self.row_offsets[idx + 1] as usize;
+
+        (&self.col_indices[start..end], &self.edge_weights[start..end])
+    }
+
+    /// Iterate over all nodes and their adjacency lists
+    ///
+    /// Yields (`node_id`, `targets`, `weights`) tuples
+    pub fn iter_adjacency(&self) -> impl Iterator<Item = (NodeId, &[u32], &[f32])> + '_ {
         (0..self.num_nodes).map(move |node_id| {
             let start = self.row_offsets[node_id] as usize;
             let end = self.row_offsets[node_id + 1] as usize;
 
-            let targets = &self.col_indices[start..end];
-            let weights = &self.edge_weights[start..end];
-
-            // SAFETY: We know targets and weights have same length (built together)
-            let neighbors: Vec<(u32, f32)> = targets
-                .iter()
-                .zip(weights.iter())
-                .map(|(t, w)| (*t, *w))
-                .collect();
-
-            // Leak to satisfy lifetime (temporary hack for MVP)
-            let static_neighbors: &'static [(u32, f32)] = Box::leak(neighbors.into_boxed_slice());
-
-            #[allow(clippy::cast_possible_truncation)] // Graphs >4B nodes not supported yet
-            (node_id as u32, static_neighbors)
+            #[allow(clippy::cast_possible_truncation)]
+            (
+                NodeId(node_id as u32),
+                &self.col_indices[start..end],
+                &self.edge_weights[start..end],
+            )
         })
     }
 

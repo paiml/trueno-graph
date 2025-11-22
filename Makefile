@@ -73,7 +73,7 @@ coverage: ## Generate coverage report (≥95% required)
 	@echo "📊 Generating coverage report (target: ≥95%)..."
 	@# Temporarily disable mold linker (breaks LLVM coverage)
 	@test -f ~/.cargo/config.toml && mv ~/.cargo/config.toml ~/.cargo/config.toml.cov-backup || true
-	@cargo llvm-cov --all-features --workspace --lcov --output-path lcov.info
+	@cargo llvm-cov --all-features --lcov --output-path lcov.info
 	@cargo llvm-cov report --html --output-dir target/coverage/html
 	@# Restore mold linker
 	@test -f ~/.cargo/config.toml.cov-backup && mv ~/.cargo/config.toml.cov-backup ~/.cargo/config.toml || true

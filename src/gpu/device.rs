@@ -41,6 +41,13 @@ pub struct GpuDevice {
 }
 
 impl GpuDevice {
+    /// Check if GPU is available without creating a device
+    ///
+    /// This is useful for tests to skip gracefully when GPU is not available.
+    pub async fn is_gpu_available() -> bool {
+        Self::new().await.is_ok()
+    }
+
     /// Initialize GPU device with default settings
     ///
     /// # Errors
@@ -165,8 +172,12 @@ mod tests {
     use super::*;
 
     #[tokio::test]
-    #[ignore = "Requires GPU hardware"]
     async fn test_gpu_device_creation() {
+        if !GpuDevice::is_gpu_available().await {
+            eprintln!("⚠️  Skipping test_gpu_device_creation: GPU not available");
+            return;
+        }
+
         let device = GpuDevice::new().await;
         assert!(device.is_ok(), "Failed to create GPU device");
 
@@ -175,8 +186,12 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore = "Requires GPU hardware"]
     async fn test_gpu_adapter_info() {
+        if !GpuDevice::is_gpu_available().await {
+            eprintln!("⚠️  Skipping test_gpu_adapter_info: GPU not available");
+            return;
+        }
+
         let device = GpuDevice::new().await.unwrap();
         let info = device.info();
 

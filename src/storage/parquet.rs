@@ -75,9 +75,9 @@ impl CsrGraph {
         let mut targets = Vec::new();
         let mut weights = Vec::new();
 
-        for (src, neighbors) in self.iter_adjacency() {
-            for (dst, weight) in neighbors {
-                sources.push(src);
+        for (src, target_nodes, edge_weights) in self.iter_adjacency() {
+            for (dst, weight) in target_nodes.iter().zip(edge_weights.iter()) {
+                sources.push(src.0);
                 targets.push(*dst);
                 weights.push(*weight);
             }

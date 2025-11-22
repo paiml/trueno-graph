@@ -1,0 +1,280 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Project Overview
+
+**trueno-graph** is a GPU-first embedded graph database for code analysis (call graphs, dependencies, AST traversals). Built on PAIML's proven infrastructure (trueno, aprender), it provides 10-250× speedups through hybrid CPU/GPU execution.
+
+**Status**: Phases 1-4 complete (CPU algorithms, GPU acceleration, community detection, pattern matching). Phase 5 planned (GPU memory paging, advanced patterns).
+
+**Quality Standards**:
+- **EXTREME TDD**: ≥95% test coverage (currently 98%+), zero SATD
+- **Quality tools**: pmat + certeza + bashrs enforcement
+- **Zero tolerance**: No clippy warnings with `-D warnings`
+
+## Build & Development Commands
+
+### Basic Development
+```bash
+make build          # Debug build (--all-features)
+make release        # Optimized release build
+make test           # Run all tests (CPU + GPU if hardware available)
+make bench          # Run Criterion benchmarks
+make clean          # Clean build artifacts
+```
+
+### Quality Gates
+```bash
+make lint           # Check clippy + formatting (CI mode)
+make lint-fix       # Auto-fix clippy + formatting issues
+make fmt            # Format code with rustfmt
+make coverage       # Generate coverage report (≥95% required)
+make quality        # Run pmat quality gates + bashrs validation
+make mutation-test  # Run mutation testing (≥80% score)
+make validate-all   # Full validation (quality + test + bench + mutation)
+```
+
+### Running Tests
+```bash
+# All tests
+cargo test --all-features
+
+# Single test (filter by name)
+cargo test test_name_here
+
+# GPU tests (requires hardware)
+cargo test --features gpu
+
+# Specific module
+cargo test --lib storage::csr
+
+# Integration tests
+cargo test --test '*'
+```
+
+### Benchmarks
+```bash
+# CPU benchmarks
+cargo bench --bench graph_algorithms
+
+# GPU benchmarks (requires hardware)
+cargo bench --bench gpu_algorithms --features gpu
+
+# Phase 4 benchmarks (community detection, pattern matching)
+cargo bench --bench phase4_algorithms
+
+# Save baseline
+make bench-save
+```
+
+## Architecture & Code Structure
+
+### Core Architecture
+
+**Three-layer design**:
+1. **Storage Layer** (`src/storage/`): CSR (Compressed Sparse Row) graph representation
+2. **Algorithm Layer** (`src/algorithms/`): Graph algorithms leveraging aprender
+3. **GPU Layer** (`src/gpu/`): Optional GPU acceleration via wgpu (feature flag)
+
+### Storage Layer (`src/storage/`)
+
+**CSR Format** (Compressed Sparse Row):
+- **Forward CSR**: O(1) outgoing edge queries via `row_offsets` + `col_indices`
+- **Reverse CSR**: O(1) incoming edge queries via `rev_row_offsets` + `rev_col_indices`
+- **Parquet persistence**: DuckDB-inspired columnar storage (via Arrow)
+
+```rust
+// Example: src/storage/csr.rs
+CsrGraph {
+    row_offsets: Vec<u32>,      // Forward CSR offsets
+    col_indices: Vec<u32>,      // Forward CSR targets
+    edge_weights: Vec<f32>,     // Forward CSR weights
+    rev_row_offsets: Vec<u32>,  // Reverse CSR offsets (Phase 3.1)
+    rev_col_indices: Vec<u32>,  // Reverse CSR sources
+    rev_edge_weights: Vec<f32>, // Reverse CSR weights
+}
+```
+
+**Key files**:
+- `src/storage/csr.rs`: Core CSR graph data structure
+- `src/storage/parquet.rs`: Parquet serialization/deserialization
+
+### Algorithm Layer (`src/algorithms/`)
+
+**Algorithms** (Phase 1-4):
+- **Traversal** (`traversal.rs`): BFS, find_callers (reverse BFS)
+- **PageRank** (`pagerank.rs`): Sparse matrix ops via aprender
+- **Community Detection** (`louvain.rs`): Louvain clustering
+- **Pattern Matching** (`pattern.rs`): Anti-pattern detection (God Class, Circular Dependencies, Dead Code)
+
+**Design principle**: Delegates sparse matrix operations to aprender (shared SIMD primitives via trueno).
+
+### GPU Layer (`src/gpu/`) - Optional Feature
+
+**GPU acceleration** (enabled via `--features gpu`):
+- **Device management** (`device.rs`): wgpu device initialization
+- **Buffer management** (`buffer.rs`): CSR data upload to GPU VRAM
+- **GPU BFS** (`bfs.rs`): Level-synchronous WGSL compute shader
+- **GPU PageRank** (`pagerank.rs`): SpMV iteration with buffer ping-pong
+- **Shaders** (`shaders/`): WGSL compute shaders (bfs_simple.wgsl, pagerank.wgsl)
+
+**Performance**: 10-250× speedups vs NetworkX baseline (requires wgpu-capable hardware).
+
+## Dependencies
+
+### Core Dependencies
+- **trueno** (0.6.0): SIMD primitives (shared with aprender)
+- **aprender** (0.7.0): Sparse matrix operations, PageRank
+- **arrow** (53): RecordBatch zero-copy
+- **parquet** (53): Persistent storage
+- **tokio** (1): Async runtime
+
+### GPU Dependencies (Optional)
+- **wgpu** (22): WebGPU API for compute shaders
+- **bytemuck** (1): Zero-copy buffer casting
+- **futures-intrusive** (0.5): Async GPU operations
+
+### Development Dependencies
+- **criterion** (0.6): Benchmarking framework
+- **proptest** (1.9): Property-based testing
+- **serial_test** (3): Sequential test execution
+
+## Quality Enforcement
+
+### Coverage Requirements
+- **Minimum**: 95% line coverage (enforced by `make coverage`)
+- **Current**: 98%+ coverage
+- **Report**: `target/coverage/html/index.html` (after `make coverage`)
+
+### Linting Standards
+```bash
+# Zero warnings enforced
+cargo clippy --all-features -- -D warnings
+
+# Workspace lints (Cargo.toml):
+# - correctness: deny
+# - suspicious: warn
+# - perf: warn
+# - unwrap_used: warn (prefer Result<T, E>)
+# - expect_used: warn (prefer anyhow context)
+```
+
+### Pre-commit Hooks
+```bash
+make install-hooks  # Install pmat + bashrs pre-commit hooks
+```
+
+Hooks validate:
+- pmat complexity (≤20 per function)
+- pmat dead-code analysis
+- pmat SATD detection (fail on any)
+- bashrs Makefile validation
+- clippy + formatting
+
+## GPU Development
+
+### GPU Feature Flag
+```toml
+# Enable GPU acceleration
+[dependencies]
+trueno-graph = { version = "0.1", features = ["gpu"] }
+```
+
+### GPU Tests & Benchmarks
+```bash
+# GPU tests (automatically skipped if no GPU)
+cargo test --features gpu
+
+# GPU benchmarks (automatically skipped if no GPU)
+cargo bench --bench gpu_algorithms --features gpu
+```
+
+**Important**: GPU tests use `#[ignore]` attribute and are automatically skipped in CI environments without GPU hardware.
+
+### GPU Architecture
+- **WGSL shaders**: `src/gpu/shaders/*.wgsl` (compute shaders)
+- **Zero-copy uploads**: CSR data → GPU VRAM via `GpuCsrBuffers`
+- **Async execution**: Non-blocking GPU compute with futures-intrusive
+
+## Academic Foundation
+
+Based on 10 peer-reviewed papers:
+1. **Gunrock** (Wang et al., ACM ToPC 2017): GPU graph traversal primitives
+2. **GraphBLAST** (Yang et al., ACM ToMS 2022): GPU linear algebra for graphs
+3. **DuckDB** (Raasveldt et al., SIGMOD 2019): Columnar storage patterns
+4. **Page et al.** (1999): PageRank algorithm
+5. **Ligra** (Shun & Blelloch, PPoPP 2013): Frontier-based traversal
+
+See `docs/specifications/graph-db-spec.md` for full citation list and design rationale.
+
+## Examples
+
+**Examples** are located in `examples/`:
+- `simple_graph.rs`: Basic CSR graph construction
+- `graph_algorithms.rs`: BFS, PageRank, find_callers
+- `comprehensive_demo.rs`: Full feature demonstration (Phases 1-4)
+
+Run examples:
+```bash
+cargo run --example simple_graph
+cargo run --example graph_algorithms
+cargo run --example comprehensive_demo
+```
+
+## Testing Strategy
+
+### Test Organization
+- **Unit tests**: Inline with modules (`#[cfg(test)]` blocks)
+- **Integration tests**: `tests/` directory (if present)
+- **Property-based tests**: Using proptest for CSR invariants
+- **GPU tests**: Marked with `#[ignore]`, run via `cargo test --features gpu`
+
+### GPU Test Strategy
+GPU tests are marked `#[ignore]` and skip gracefully if hardware unavailable:
+```rust
+#[test]
+#[ignore] // Run explicitly: cargo test --features gpu
+async fn test_gpu_bfs() { ... }
+```
+
+## Common Patterns
+
+### Error Handling
+- Use `anyhow::Result<T>` for public APIs
+- Avoid `.unwrap()` and `.expect()` (clippy warnings enabled)
+- Prefer `?` operator with anyhow context
+
+### Async Operations
+- Parquet I/O is async (requires tokio runtime)
+- GPU operations are async (futures-intrusive)
+- Tests use `#[tokio::test]` attribute
+
+### Performance
+- Release profile: `opt-level = 3`, LTO enabled, single codegen unit
+- Bench profile: Inherits release, keeps symbols for flamegraph profiling
+
+## Documentation
+
+```bash
+make docs  # Open rustdoc in browser (cargo doc --all-features --no-deps --open)
+```
+
+**Key docs**:
+- `docs/specifications/graph-db-spec.md`: Full specification with citations
+- `GPU_BFS_STATUS.md`: GPU implementation details (if present)
+- Inline rustdoc: All public APIs documented
+
+## Related Projects
+
+**PAIML Infrastructure**:
+- **trueno**: SIMD primitives (foundation for aprender)
+- **aprender**: Machine learning library with sparse matrix ops
+- **trueno-db**: Columnar database (storage patterns inspired graph persistence)
+
+**Dependency relationship**:
+```
+trueno-graph → aprender → trueno (SIMD)
+            → parquet/arrow (storage)
+            → wgpu (GPU, optional)
+```

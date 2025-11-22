@@ -386,8 +386,12 @@ mod tests {
     use crate::CsrGraph;
 
     #[tokio::test]
-    #[ignore = "Requires GPU hardware"]
     async fn test_gpu_bfs_simple_chain() {
+        if !GpuDevice::is_gpu_available().await {
+            eprintln!("⚠️  Skipping test_gpu_bfs_simple_chain: GPU not available");
+            return;
+        }
+
         let device = GpuDevice::new().await.unwrap();
 
         // Create chain: 0 -> 1 -> 2
@@ -398,15 +402,19 @@ mod tests {
         let buffers = GpuCsrBuffers::from_csr_graph(&device, &graph).unwrap();
         let result = gpu_bfs(&device, &buffers, NodeId(0)).await.unwrap();
 
-        // Note: This test will fail until full implementation
+        // Verify BFS distances
         assert_eq!(result.distance(NodeId(0)), Some(0));
-        // assert_eq!(result.distance(NodeId(1)), Some(1)); // TODO: Implement
-        // assert_eq!(result.distance(NodeId(2)), Some(2)); // TODO: Implement
+        assert_eq!(result.distance(NodeId(1)), Some(1));
+        assert_eq!(result.distance(NodeId(2)), Some(2));
     }
 
     #[tokio::test]
-    #[ignore = "Requires GPU hardware"]
     async fn test_gpu_bfs_disconnected() {
+        if !GpuDevice::is_gpu_available().await {
+            eprintln!("⚠️  Skipping test_gpu_bfs_disconnected: GPU not available");
+            return;
+        }
+
         let device = GpuDevice::new().await.unwrap();
 
         // Create disconnected: 0 -> 1, 2 (isolated)
