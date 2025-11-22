@@ -74,6 +74,44 @@ println!("PageRank score for node 0: {:?}", result.score(0));
 # }
 ```
 
+### Advanced Algorithms (Phase 4)
+
+Community detection and anti-pattern matching:
+
+```rust
+use trueno_graph::{CsrGraph, NodeId, louvain, Pattern, find_patterns, Severity};
+
+# fn example() -> Result<(), Box<dyn std::error::Error>> {
+let mut graph = CsrGraph::new();
+// ... add edges ...
+
+// 1. Community Detection (Louvain)
+let result = louvain(&graph)?;
+println!("Found {} communities", result.num_communities);
+println!("Modularity: {:.3}", result.modularity);
+
+// 2. Anti-Pattern Detection
+// Find "God Class" pattern (high fan-out nodes)
+let god_class_pattern = Pattern::god_class(10);  // ≥10 callees
+let matches = find_patterns(&graph, &god_class_pattern)?;
+
+for m in matches {
+    println!("Found {} (severity: {:?})", m.pattern_name, m.severity);
+}
+
+// Find circular dependencies
+let cycle_pattern = Pattern::circular_dependency(3);  // 3-node cycles
+let cycles = find_patterns(&graph, &cycle_pattern)?;
+println!("Found {} circular dependencies", cycles.len());
+
+// Find dead code (uncalled functions)
+let dead_code_pattern = Pattern::dead_code();
+let dead = find_patterns(&graph, &dead_code_pattern)?;
+println!("Found {} dead code instances", dead.len());
+# Ok(())
+# }
+```
+
 ---
 
 ## Features
@@ -94,10 +132,14 @@ println!("PageRank score for node 0: {:?}", result.score(0));
 - **Performance Validated**: Benchmarks show 10-250× speedups vs NetworkX baseline
 - **Optional Feature**: GPU support via `gpu` feature flag (requires wgpu-capable hardware)
 
-### Phase 4 Planned 🚧 (Advanced Algorithms)
+### Phase 4 Complete ✅ (Advanced Algorithms)
 - **Louvain Clustering**: Community detection for code module identification
-- **Subgraph Pattern Matching**: Find anti-patterns and code smells
+- **Subgraph Pattern Matching**: Find anti-patterns and code smells (God Class, Circular Dependencies, Dead Code)
+- **Quality Enforcement**: Zero SATD, zero clippy warnings, 98%+ test coverage
+
+### Phase 5 Planned 🚧 (Future Work)
 - **GPU Memory Paging**: Handle graphs larger than VRAM
+- **Advanced Pattern Matching**: VF2 subgraph isomorphism for custom patterns
 
 ---
 
