@@ -44,9 +44,16 @@
 pub mod algorithms;
 pub mod storage;
 
+// GPU acceleration (Phase 3 - optional)
+#[cfg(feature = "gpu")]
+pub mod gpu;
+
 // Re-export core types
 pub use algorithms::{bfs, find_callers, pagerank};
 pub use storage::{CsrGraph, NodeId};
+
+#[cfg(feature = "gpu")]
+pub use gpu::GpuDevice;
 
 // Error type
 pub use anyhow::{Error, Result};

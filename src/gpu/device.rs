@@ -1,0 +1,154 @@
+//! GPU device initialization and management
+//!
+//! Handles wgpu device creation, adapter selection, and GPU resource lifecycle.
+
+use thiserror::Error;
+
+/// GPU device initialization errors
+#[derive(Debug, Error)]
+pub enum GpuDeviceError {
+    /// No compatible GPU adapter found
+    #[error("No compatible GPU adapter found")]
+    NoAdapter,
+
+    /// Failed to request GPU device
+    #[error("Failed to request GPU device: {0}")]
+    DeviceRequest(String),
+
+    /// GPU feature not supported
+    #[error("GPU feature not supported: {0}")]
+    UnsupportedFeature(String),
+}
+
+/// GPU device wrapper for graph operations
+///
+/// # Example
+///
+/// ```ignore
+/// # use trueno_graph::gpu::GpuDevice;
+/// let device = GpuDevice::new().await?;
+/// assert!(device.is_available());
+/// ```
+#[derive(Debug)]
+pub struct GpuDevice {
+    #[allow(dead_code)]
+    device: wgpu::Device,
+    #[allow(dead_code)]
+    queue: wgpu::Queue,
+    #[allow(dead_code)]
+    adapter: wgpu::Adapter,
+}
+
+impl GpuDevice {
+    /// Initialize GPU device with default settings
+    ///
+    /// # Errors
+    ///
+    /// Returns `GpuDeviceError` if:
+    /// - No compatible GPU adapter found
+    /// - Device request fails
+    /// - Required features not supported
+    pub async fn new() -> Result<Self, GpuDeviceError> {
+        Self::new_with_backend(wgpu::Backends::all()).await
+    }
+
+    /// Initialize GPU device with specific backend
+    ///
+    /// # Errors
+    ///
+    /// Returns `GpuDeviceError` if device initialization fails
+    pub async fn new_with_backend(backends: wgpu::Backends) -> Result<Self, GpuDeviceError> {
+        // Create wgpu instance
+        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
+            backends,
+            ..Default::default()
+        });
+
+        // Request adapter (GPU)
+        let adapter = instance
+            .request_adapter(&wgpu::RequestAdapterOptions {
+                power_preference: wgpu::PowerPreference::HighPerformance,
+                compatible_surface: None,
+                force_fallback_adapter: false,
+            })
+            .await
+            .ok_or(GpuDeviceError::NoAdapter)?;
+
+        // Request device and queue
+        let (device, queue) = adapter
+            .request_device(
+                &wgpu::DeviceDescriptor {
+                    label: Some("trueno-graph GPU device"),
+                    required_features: wgpu::Features::empty(),
+                    required_limits: wgpu::Limits::default(),
+                    memory_hints: wgpu::MemoryHints::default(),
+                },
+                None,
+            )
+            .await
+            .map_err(|e| GpuDeviceError::DeviceRequest(e.to_string()))?;
+
+        Ok(Self {
+            device,
+            queue,
+            adapter,
+        })
+    }
+
+    /// Check if GPU is available
+    #[must_use]
+    pub fn is_available(&self) -> bool {
+        true // If we constructed successfully, GPU is available
+    }
+
+    /// Get adapter info (GPU name, backend, etc.)
+    #[must_use]
+    pub fn info(&self) -> wgpu::AdapterInfo {
+        self.adapter.get_info()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    #[ignore] // Requires GPU hardware
+    async fn test_gpu_device_creation() {
+        let device = GpuDevice::new().await;
+        assert!(device.is_ok(), "Failed to create GPU device");
+
+        let device = device.unwrap();
+        assert!(device.is_available());
+    }
+
+    #[tokio::test]
+    #[ignore] // Requires GPU hardware
+    async fn test_gpu_adapter_info() {
+        let device = GpuDevice::new().await.unwrap();
+        let info = device.info();
+
+        // Basic sanity checks
+        assert!(!info.name.is_empty(), "Adapter name should not be empty");
+        println!("GPU: {:?}", info);
+    }
+
+    #[tokio::test]
+    async fn test_gpu_device_with_invalid_backend() {
+        // Try to create device with no backends (should fail)
+        let device = GpuDevice::new_with_backend(wgpu::Backends::empty()).await;
+        assert!(
+            device.is_err(),
+            "Device creation should fail with empty backends"
+        );
+    }
+
+    #[test]
+    fn test_gpu_device_error_display() {
+        let err = GpuDeviceError::NoAdapter;
+        assert_eq!(err.to_string(), "No compatible GPU adapter found");
+
+        let err = GpuDeviceError::DeviceRequest("test error".to_string());
+        assert_eq!(err.to_string(), "Failed to request GPU device: test error");
+    }
+}

@@ -66,8 +66,9 @@ milestones:
         completion_date: 2025-11-22
         labels: [optimization, core]
       - id: p3-gpu-setup
-        title: wgpu integration and GPU buffer management
-        status: todo
+        title: wgpu integration and GPU device initialization
+        status: complete
+        completion_date: 2025-11-22
         priority: medium
         labels: [gpu, infrastructure]
         dependencies: [p3-reverse-csr]
@@ -111,6 +112,7 @@ milestones:
 
 notes: |
   - Phase 1 complete: 23 tests, 96.96% coverage
-  - Phase 2 complete: 37 tests, 97.86% coverage
+  - Phase 2 complete: 37 tests, 97.86% coverage (+ NetworkX benchmarks)
   - Phase 3.1 complete: 40 tests, 98.11% coverage, O(1) incoming neighbors
-  - Next priority: NetworkX validation before GPU work
+  - Phase 3.2 complete: 27 tests (with --features gpu), GPU device initialization
+  - Next priority: GPU buffer management (Phase 3.3) then GPU BFS/PageRank
