@@ -247,14 +247,14 @@ def generate_report(bfs_results: Dict, pagerank_results: Dict) -> None:
         'bfs': bfs_results,
         'pagerank': pagerank_results,
         'summary': {
-            'bfs_avg_speedup': bfs_avg_speedup,
-            'bfs_acceptance': bfs_min_speedup >= 10,
-            'pagerank_avg_speedup': pr_avg_speedup,
-            'pagerank_acceptance': pr_min_speedup >= 5
+            'bfs_avg_speedup': float(bfs_avg_speedup),
+            'bfs_acceptance': bool(bfs_min_speedup >= 10),
+            'pagerank_avg_speedup': float(pr_avg_speedup),
+            'pagerank_acceptance': bool(pr_min_speedup >= 5)
         }
     }
 
-    output_path = Path('benchmarks/networkx_comparison_results.json')
+    output_path = Path('networkx_comparison_results.json')
     with open(output_path, 'w') as f:
         json.dump(results, f, indent=2)
 
