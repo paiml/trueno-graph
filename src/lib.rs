@@ -49,7 +49,7 @@ pub mod storage;
 pub mod gpu;
 
 // Re-export core types
-pub use algorithms::{bfs, find_callers, pagerank};
+pub use algorithms::{bfs, find_callers, louvain, pagerank, CommunityDetectionResult};
 pub use storage::{CsrGraph, NodeId};
 
 #[cfg(feature = "gpu")]
