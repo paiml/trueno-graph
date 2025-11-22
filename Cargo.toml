@@ -24,7 +24,7 @@ anyhow = "1"
 thiserror = "1"
 
 # Phase 2+ dependencies
-aprender = { path = "../aprender", version = "0.6.0" }  # Sparse matrix ops, PageRank
+aprender = { path = "../aprender", version = "0.7.0" }  # Sparse matrix ops, PageRank
 trueno = { version = "0.6.0" }                           # SIMD primitives (shared with aprender)
 
 # Phase 3: GPU acceleration (optional - requires wgpu-capable hardware)

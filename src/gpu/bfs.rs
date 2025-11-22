@@ -69,14 +69,56 @@ pub async fn gpu_bfs(
     buffers: &GpuCsrBuffers,
     source: NodeId,
 ) -> Result<GpuBfsResult> {
-    // For MVP: Return stub implementation
-    // Full implementation requires:
-    // 1. Load WGSL shader
-    // 2. Create compute pipeline
-    // 3. Create auxiliary buffers (visited, distances, frontiers)
-    // 4. Create bind groups
-    // 5. Dispatch compute shader in loop until frontier empty
-    // 6. Read back results
+    // TODO: Full GPU BFS implementation (Phase 3 - ~40% remaining work)
+    //
+    // Infrastructure complete (60%):
+    // ✅ GPU buffer management (GpuCsrBuffers)
+    // ✅ WGSL compute shaders (bfs.wgsl, bfs_simple.wgsl)
+    // ✅ Rust API design (GpuBfsResult, gpu_bfs)
+    // ✅ Test scaffolding
+    //
+    // Remaining integration work (40%, ~4-6 hours):
+    //
+    // 1. Load WGSL shader:
+    //    ```rust
+    //    const SHADER: &str = include_str!("shaders/bfs_simple.wgsl");
+    //    let shader_module = device.device().create_shader_module(wgpu::ShaderModuleDescriptor {
+    //        label: Some("BFS Shader"),
+    //        source: wgpu::ShaderSource::Wgsl(SHADER.into()),
+    //    });
+    //    ```
+    //
+    // 2. Create compute pipeline:
+    //    - Define bind group layout (params, row_offsets, col_indices, distances, updated)
+    //    - Create pipeline layout
+    //    - Create compute pipeline
+    //
+    // 3. Create auxiliary buffers:
+    //    - distances: array<atomic<u32>> initialized to u32::MAX (except source = 0)
+    //    - updated: atomic<u32> flag (1 if work done, 0 otherwise)
+    //    - params: uniform buffer (num_nodes, current_level, source_node)
+    //
+    // 4. BFS loop:
+    //    ```rust
+    //    for level in 0..num_nodes {
+    //        // Reset updated flag
+    //        // Dispatch shader: (num_nodes + 255) / 256 workgroups
+    //        // Read updated flag
+    //        // If no updates, break
+    //    }
+    //    ```
+    //
+    // 5. Read back results:
+    //    - Map distances buffer
+    //    - Copy to Vec<u32>
+    //    - Convert atomic<u32> values to regular u32
+    //
+    // References:
+    // - WGSL shader: src/gpu/shaders/bfs_simple.wgsl
+    // - wgpu examples: https://github.com/gfx-rs/wgpu/tree/master/examples
+    // - Gunrock (Wang et al., ACM ToPC 2017) for algorithm design
+    //
+    // Current status: Stub implementation for API testing
 
     // Stub: Return distances array with source at 0, all others unreachable
     let mut distances = vec![u32::MAX; buffers.num_nodes()];
