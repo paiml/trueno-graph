@@ -275,6 +275,24 @@ impl CsrGraph {
         self.col_indices.len()
     }
 
+    /// Get row offsets as slice (for GPU upload)
+    #[must_use]
+    pub fn row_offsets_slice(&self) -> &[u32] {
+        &self.row_offsets
+    }
+
+    /// Get column indices as slice (for GPU upload)
+    #[must_use]
+    pub fn col_indices_slice(&self) -> &[u32] {
+        &self.col_indices
+    }
+
+    /// Get edge weights as slice (for GPU upload)
+    #[must_use]
+    pub fn edge_weights_slice(&self) -> &[f32] {
+        &self.edge_weights
+    }
+
     /// Iterate over adjacency list (`node_id`, &[(target, weight)])
     pub fn iter_adjacency(&self) -> impl Iterator<Item = (u32, &[(u32, f32)])> + '_ {
         (0..self.num_nodes).map(move |node_id| {

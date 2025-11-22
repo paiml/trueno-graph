@@ -3,6 +3,7 @@
 //! Handles wgpu device creation, adapter selection, and GPU resource lifecycle.
 
 use thiserror::Error;
+use wgpu::util::DeviceExt;
 
 /// GPU device initialization errors
 #[derive(Debug, Error)]
@@ -105,6 +106,57 @@ impl GpuDevice {
     #[must_use]
     pub fn info(&self) -> wgpu::AdapterInfo {
         self.adapter.get_info()
+    }
+
+    /// Create GPU buffer with initial data
+    ///
+    /// # Errors
+    ///
+    /// Returns error if buffer creation fails (typically won't happen with wgpu)
+    pub fn create_buffer_init(
+        &self,
+        label: &str,
+        contents: &[u8],
+        usage: wgpu::BufferUsages,
+    ) -> Result<wgpu::Buffer, GpuDeviceError> {
+        Ok(self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some(label),
+                contents,
+                usage,
+            }))
+    }
+
+    /// Create empty GPU buffer
+    ///
+    /// # Errors
+    ///
+    /// Returns error if buffer creation fails
+    pub fn create_buffer(
+        &self,
+        label: &str,
+        size: u64,
+        usage: wgpu::BufferUsages,
+    ) -> Result<wgpu::Buffer, GpuDeviceError> {
+        Ok(self.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some(label),
+            size,
+            usage,
+            mapped_at_creation: false,
+        }))
+    }
+
+    /// Get device reference
+    #[must_use]
+    pub const fn device(&self) -> &wgpu::Device {
+        &self.device
+    }
+
+    /// Get queue reference
+    #[must_use]
+    pub const fn queue(&self) -> &wgpu::Queue {
+        &self.queue
     }
 }
 

@@ -18,6 +18,8 @@
 //! cargo build --features gpu
 //! ```
 
+mod buffer;
 mod device;
 
+pub use buffer::GpuCsrBuffers;
 pub use device::{GpuDevice, GpuDeviceError};
