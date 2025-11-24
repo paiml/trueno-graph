@@ -10,7 +10,21 @@ use trueno_graph::{bfs, find_callers, pagerank, CsrGraph, NodeId};
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("🦀 trueno-graph Phase 2: Graph Algorithms\n");
 
-    // 1. Build a realistic call graph
+    let graph = build_call_graph()?;
+
+    let reachable = demo_bfs(&graph)?;
+    let callers = demo_find_callers(&graph)?;
+    let (ranked, scores) = demo_pagerank(&graph)?;
+
+    demo_critical_path(&graph, &scores)?;
+    let diff = demo_parquet_roundtrip(&graph, &scores).await?;
+
+    print_summary(&reachable, &callers, &ranked, diff);
+
+    Ok(())
+}
+
+fn build_call_graph() -> Result<CsrGraph, Box<dyn std::error::Error>> {
     println!("📊 Building call graph...");
     let mut graph = CsrGraph::new();
 
@@ -57,27 +71,36 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         graph.num_edges()
     );
 
-    // 2. BFS: Find all functions reachable from main
+    Ok(graph)
+}
+
+fn demo_bfs(graph: &CsrGraph) -> Result<Vec<u32>, Box<dyn std::error::Error>> {
     println!("🔍 BFS: Finding all functions reachable from main()...");
-    let reachable = bfs(&graph, NodeId(0))?;
+    let reachable = bfs(graph, NodeId(0))?;
     println!("  Found {} reachable functions:", reachable.len());
     for &node in &reachable {
         let name = graph.get_node_name(NodeId(node)).unwrap_or("unknown");
         println!("    → {}", name);
     }
+    Ok(reachable)
+}
 
-    // 3. Find Callers: Who calls validate_config?
+fn demo_find_callers(graph: &CsrGraph) -> Result<Vec<u32>, Box<dyn std::error::Error>> {
     println!("\n🔍 Finding all callers of validate_config()...");
-    let callers = find_callers(&graph, NodeId(2), 10)?;
+    let callers = find_callers(graph, NodeId(2), 10)?;
     println!("  Found {} callers:", callers.len());
     for &caller in &callers {
         let name = graph.get_node_name(NodeId(caller)).unwrap_or("unknown");
         println!("    ← {}", name);
     }
+    Ok(callers)
+}
 
-    // 4. PageRank: Compute importance scores
+fn demo_pagerank(
+    graph: &CsrGraph,
+) -> Result<(Vec<(&str, f32)>, Vec<f32>), Box<dyn std::error::Error>> {
     println!("\n📊 Computing PageRank importance scores...");
-    let scores = pagerank(&graph, 20, 1e-6)?;
+    let scores = pagerank(graph, 20, 1e-6)?;
 
     // Create ranked list
     let mut ranked: Vec<_> = (0..graph.num_nodes())
@@ -93,24 +116,31 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("    {}. {} (score: {:.4})", i + 1, name, score);
     }
 
-    // 5. Find critical path: Functions that call process_data
+    Ok((ranked, scores))
+}
+
+fn demo_critical_path(graph: &CsrGraph, scores: &[f32]) -> Result<(), Box<dyn std::error::Error>> {
     println!("\n🔍 Finding all callers of process_data() (depth 5)...");
-    let process_callers = find_callers(&graph, NodeId(5), 5)?;
+    let process_callers = find_callers(graph, NodeId(5), 5)?;
     println!("  Found {} functions in call chain:", process_callers.len());
     for &caller in &process_callers {
         let name = graph.get_node_name(NodeId(caller)).unwrap_or("unknown");
         let score = scores[caller as usize];
         println!("    ← {} (importance: {:.4})", name, score);
     }
+    Ok(())
+}
 
-    // 6. Save to Parquet for later analysis
+async fn demo_parquet_roundtrip(
+    graph: &CsrGraph,
+    scores: &[f32],
+) -> Result<f32, Box<dyn std::error::Error>> {
     println!("\n💾 Saving to Parquet...");
     let path = std::env::temp_dir().join("call_graph");
     graph.write_parquet(&path).await?;
     println!("  ✅ Saved to {}_edges.parquet", path.display());
     println!("  ✅ Saved to {}_nodes.parquet", path.display());
 
-    // 7. Demonstrate roundtrip
     println!("\n📂 Loading from Parquet...");
     let loaded = CsrGraph::read_parquet(&path).await?;
     let loaded_scores = pagerank(&loaded, 20, 1e-6)?;
@@ -132,6 +162,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         diff
     );
 
+    Ok(diff)
+}
+
+fn print_summary(reachable: &[u32], callers: &[u32], ranked: &[(&str, f32)], diff: f32) {
     println!("\n✨ Phase 2 algorithms complete!");
     println!("\nSummary:");
     println!(
@@ -144,6 +178,4 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         ranked[0].0, ranked[0].1
     );
     println!("  • Parquet roundtrip verified (diff: {:.2e})", diff);
-
-    Ok(())
 }

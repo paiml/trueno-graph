@@ -16,18 +16,28 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("║        trueno-graph Comprehensive Feature Demo              ║");
     println!("╚══════════════════════════════════════════════════════════════╝\n");
 
-    // ═══════════════════════════════════════════════════════════════
-    // Phase 1+2: Graph Storage and Basic Algorithms
-    // ═══════════════════════════════════════════════════════════════
+    demo_phase1_and_phase2()?;
+    demo_phase4_community_detection()?;
+    demo_phase4_pattern_matching()?;
+    print_performance_summary();
+    print_gpu_info();
+
+    Ok(())
+}
+
+fn demo_phase1_and_phase2() -> Result<(), Box<dyn std::error::Error>> {
     println!("📊 Phase 1+2: CSR Storage & CPU Algorithms");
     println!("──────────────────────────────────────────────────────────────\n");
 
-    // Build a sample call graph representing code dependencies
-    // main -> parse_args -> validate
-    // main -> process
-    // parse_args -> logger
-    // process -> logger
-    // logger -> (no outgoing)
+    let graph = build_call_graph()?;
+    demo_bfs(&graph)?;
+    demo_find_callers(&graph)?;
+    demo_pagerank(&graph)?;
+
+    Ok(())
+}
+
+fn build_call_graph() -> Result<CsrGraph, Box<dyn std::error::Error>> {
     let mut graph = CsrGraph::new();
 
     // Add edges (call relationships)
@@ -51,9 +61,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
     println!();
 
-    // Graph Traversal - BFS
+    Ok(graph)
+}
+
+fn demo_bfs(graph: &CsrGraph) -> Result<(), Box<dyn std::error::Error>> {
     println!("🔍 BFS Traversal from 'main':");
-    let reachable = bfs(&graph, NodeId(0))?;
+    let reachable = bfs(graph, NodeId(0))?;
     print!("   Reachable nodes: ");
     for &node_id in &reachable {
         if let Some(name) = graph.get_node_name(NodeId(node_id)) {
@@ -61,10 +74,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
     println!("\n");
+    Ok(())
+}
 
-    // Find Callers (Reverse BFS)
+fn demo_find_callers(graph: &CsrGraph) -> Result<(), Box<dyn std::error::Error>> {
     println!("📞 Find Callers of 'logger':");
-    let callers = find_callers(&graph, NodeId(4), 10)?;
+    let callers = find_callers(graph, NodeId(4), 10)?;
     print!("   Functions that call 'logger': ");
     for &caller_id in &callers {
         if let Some(name) = graph.get_node_name(NodeId(caller_id)) {
@@ -72,41 +87,28 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
     println!("\n");
+    Ok(())
+}
 
-    // PageRank - Importance Scores
+fn demo_pagerank(graph: &CsrGraph) -> Result<(), Box<dyn std::error::Error>> {
     println!("⭐ PageRank (Function Importance):");
-    let scores = pagerank(&graph, 20, 1e-6)?;
+    let scores = pagerank(graph, 20, 1e-6)?;
     for (node_id, &score) in scores.iter().enumerate() {
         if let Some(name) = graph.get_node_name(NodeId(node_id as u32)) {
             println!("   {}: {:.4}", name, score);
         }
     }
     println!();
+    Ok(())
+}
 
-    // ═══════════════════════════════════════════════════════════════
-    // Phase 4: Advanced Algorithms (Community Detection)
-    // ═══════════════════════════════════════════════════════════════
+fn demo_phase4_community_detection() -> Result<(), Box<dyn std::error::Error>> {
     println!("🧩 Phase 4: Advanced Algorithms");
     println!("──────────────────────────────────────────────────────────────\n");
 
-    // Create a larger graph with clear communities for demonstration
     println!("Building graph with intentional module structure...");
-    let mut community_graph = CsrGraph::new();
+    let community_graph = build_community_graph()?;
 
-    // Module A (networking): nodes 0-2
-    community_graph.add_edge(NodeId(0), NodeId(1), 1.0)?; // http_client -> tcp_socket
-    community_graph.add_edge(NodeId(1), NodeId(2), 1.0)?; // tcp_socket -> buffer
-    community_graph.add_edge(NodeId(2), NodeId(0), 1.0)?; // buffer -> http_client
-
-    // Module B (database): nodes 3-5
-    community_graph.add_edge(NodeId(3), NodeId(4), 1.0)?; // query -> connection
-    community_graph.add_edge(NodeId(4), NodeId(5), 1.0)?; // connection -> pool
-    community_graph.add_edge(NodeId(5), NodeId(3), 1.0)?; // pool -> query
-
-    // Cross-module dependency (weak coupling)
-    community_graph.add_edge(NodeId(0), NodeId(3), 1.0)?; // http_client -> query
-
-    // Louvain Community Detection
     println!("\n🔬 Louvain Community Detection:");
     let louvain_result = louvain(&community_graph)?;
     println!("   Found {} communities", louvain_result.num_communities);
@@ -117,54 +119,90 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     println!();
 
-    // ═══════════════════════════════════════════════════════════════
-    // Phase 4: Pattern Matching (Anti-Patterns & Code Smells)
-    // ═══════════════════════════════════════════════════════════════
+    Ok(())
+}
+
+fn build_community_graph() -> Result<CsrGraph, Box<dyn std::error::Error>> {
+    let mut graph = CsrGraph::new();
+
+    // Module A (networking): nodes 0-2
+    graph.add_edge(NodeId(0), NodeId(1), 1.0)?; // http_client -> tcp_socket
+    graph.add_edge(NodeId(1), NodeId(2), 1.0)?; // tcp_socket -> buffer
+    graph.add_edge(NodeId(2), NodeId(0), 1.0)?; // buffer -> http_client
+
+    // Module B (database): nodes 3-5
+    graph.add_edge(NodeId(3), NodeId(4), 1.0)?; // query -> connection
+    graph.add_edge(NodeId(4), NodeId(5), 1.0)?; // connection -> pool
+    graph.add_edge(NodeId(5), NodeId(3), 1.0)?; // pool -> query
+
+    // Cross-module dependency (weak coupling)
+    graph.add_edge(NodeId(0), NodeId(3), 1.0)?; // http_client -> query
+
+    Ok(graph)
+}
+
+fn demo_phase4_pattern_matching() -> Result<(), Box<dyn std::error::Error>> {
     println!("🔍 Pattern Matching (Anti-Patterns):");
     println!("──────────────────────────────────────────────────────────────\n");
 
-    // Create graph with anti-patterns
-    let mut antipattern_graph = CsrGraph::new();
+    let antipattern_graph = build_antipattern_graph()?;
+
+    demo_god_class_pattern(&antipattern_graph)?;
+    demo_circular_dependency_pattern(&antipattern_graph)?;
+    demo_dead_code_pattern(&antipattern_graph)?;
+
+    Ok(())
+}
+
+fn build_antipattern_graph() -> Result<CsrGraph, Box<dyn std::error::Error>> {
+    let mut graph = CsrGraph::new();
 
     // Create a "God Class" (node 0 calls many functions)
     for i in 1..=12 {
-        antipattern_graph.add_edge(NodeId(0), NodeId(i), 1.0)?;
+        graph.add_edge(NodeId(0), NodeId(i), 1.0)?;
     }
 
     // Create a circular dependency: 10 -> 11 -> 12 -> 10
-    antipattern_graph.add_edge(NodeId(10), NodeId(11), 1.0)?;
-    antipattern_graph.add_edge(NodeId(11), NodeId(12), 1.0)?;
-    antipattern_graph.add_edge(NodeId(12), NodeId(10), 1.0)?;
+    graph.add_edge(NodeId(10), NodeId(11), 1.0)?;
+    graph.add_edge(NodeId(11), NodeId(12), 1.0)?;
+    graph.add_edge(NodeId(12), NodeId(10), 1.0)?;
 
     // Node 13 is dead code (no incoming edges)
-    antipattern_graph.add_edge(NodeId(13), NodeId(14), 1.0)?;
+    graph.add_edge(NodeId(13), NodeId(14), 1.0)?;
 
-    // 1. God Class Pattern
+    Ok(graph)
+}
+
+fn demo_god_class_pattern(graph: &CsrGraph) -> Result<(), Box<dyn std::error::Error>> {
     println!("🐘 God Class Pattern (high fan-out ≥10):");
-    let god_class_pattern = Pattern::god_class(10);
-    let god_class_matches = find_patterns(&antipattern_graph, &god_class_pattern)?;
-    println!("   Found {} god class instances", god_class_matches.len());
-    for m in &god_class_matches {
+    let pattern = Pattern::god_class(10);
+    let matches = find_patterns(graph, &pattern)?;
+    println!("   Found {} god class instances", matches.len());
+    for m in &matches {
         println!("   - {} (Severity: {:?})", m.pattern_name, m.severity);
     }
     println!();
+    Ok(())
+}
 
-    // 2. Circular Dependency Pattern
+fn demo_circular_dependency_pattern(graph: &CsrGraph) -> Result<(), Box<dyn std::error::Error>> {
     println!("🔄 Circular Dependency Pattern (3-node cycles):");
-    let cycle_pattern = Pattern::circular_dependency(3);
-    let cycle_matches = find_patterns(&antipattern_graph, &cycle_pattern)?;
-    println!("   Found {} circular dependencies", cycle_matches.len());
-    for m in &cycle_matches {
+    let pattern = Pattern::circular_dependency(3);
+    let matches = find_patterns(graph, &pattern)?;
+    println!("   Found {} circular dependencies", matches.len());
+    for m in &matches {
         println!("   - {} (Severity: {:?})", m.pattern_name, m.severity);
     }
     println!();
+    Ok(())
+}
 
-    // 3. Dead Code Pattern
+fn demo_dead_code_pattern(graph: &CsrGraph) -> Result<(), Box<dyn std::error::Error>> {
     println!("💀 Dead Code Pattern (uncalled functions):");
-    let dead_code_pattern = Pattern::dead_code();
-    let dead_code_matches = find_patterns(&antipattern_graph, &dead_code_pattern)?;
-    println!("   Found {} dead code instances", dead_code_matches.len());
-    for m in &dead_code_matches {
+    let pattern = Pattern::dead_code();
+    let matches = find_patterns(graph, &pattern)?;
+    println!("   Found {} dead code instances", matches.len());
+    for m in &matches {
         println!(
             "   - Node {:?} (Severity: {:?})",
             m.node_mapping.get(&0),
@@ -172,10 +210,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         );
     }
     println!();
+    Ok(())
+}
 
-    // ═══════════════════════════════════════════════════════════════
-    // Performance Summary
-    // ═══════════════════════════════════════════════════════════════
+fn print_performance_summary() {
     println!("📊 Performance Characteristics:");
     println!("──────────────────────────────────────────────────────────────");
     println!("   CSR Construction: O(E log V) - ~100μs for 1K nodes");
@@ -186,7 +224,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!();
 
     println!("✅ All phases demonstrated successfully!");
+}
 
+fn print_gpu_info() {
     #[cfg(feature = "gpu")]
     {
         println!("\n💡 GPU acceleration is available! Use:");
@@ -198,6 +238,4 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("\n💡 For GPU acceleration (10-250× speedup), rebuild with:");
         println!("   cargo run --example comprehensive_demo --features gpu");
     }
-
-    Ok(())
 }

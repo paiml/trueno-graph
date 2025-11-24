@@ -25,7 +25,7 @@ thiserror = "1"
 
 # Phase 2+ dependencies
 aprender = "0.7.0"                                      # Sparse matrix ops, PageRank (crates.io)
-trueno = "0.7.0"                                        # SIMD primitives (crates.io)
+trueno = "0.7.1"                                        # SIMD primitives (crates.io)
 trueno-db = "0.3.1"                                     # Columnar storage (crates.io)
 
 # Phase 3: GPU acceleration (optional - requires wgpu-capable hardware)

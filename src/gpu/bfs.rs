@@ -358,7 +358,7 @@ pub async fn gpu_bfs(
         // Submit commands
         device.queue().submit(Some(encoder.finish()));
 
-        // Wait for GPU (for correctness - can optimize later)
+        // Wait for GPU to ensure correctness (future optimization: async polling)
         device.device().poll(wgpu::Maintain::Wait);
 
         // Read updated flag

@@ -124,7 +124,7 @@ CsrGraph {
 ## Dependencies
 
 ### Core Dependencies
-- **trueno** (0.6.0): SIMD primitives (shared with aprender)
+- **trueno** (0.7.1): SIMD primitives (shared with aprender)
 - **aprender** (0.7.0): Sparse matrix operations, PageRank
 - **arrow** (53): RecordBatch zero-copy
 - **parquet** (53): Persistent storage
