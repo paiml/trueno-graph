@@ -25,3 +25,9 @@ lcov.info
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
 docs/
+
+# Development artifacts
+golden_traces/
+scripts/
+renacer.toml
+GOLDEN_TRACE_INTEGRATION_SUMMARY.md
