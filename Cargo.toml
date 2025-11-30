@@ -1,6 +1,6 @@
 [package]
 name = "trueno-graph"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2021"
 authors = ["Pragmatic AI Labs <info@paiml.com>"]
 license = "MIT"
@@ -13,8 +13,8 @@ readme = "README.md"
 
 [dependencies]
 # Data formats (columnar) - MVP uses Arrow/Parquet directly
-arrow = "53"                                            # RecordBatch zero-copy
-parquet = "53"                                          # Persistent storage
+arrow = "54"                                            # RecordBatch zero-copy
+parquet = "54"                                          # Persistent storage
 
 # Async runtime (required for I/O)
 tokio = { version = "1", features = ["rt", "fs", "sync", "macros"] }
@@ -24,9 +24,9 @@ anyhow = "1"
 thiserror = "1"
 
 # Phase 2+ dependencies
-aprender = "0.7.0"                                      # Sparse matrix ops, PageRank (crates.io)
-trueno = "0.7.1"                                        # SIMD primitives (crates.io)
-trueno-db = "0.3.1"                                     # Columnar storage (crates.io)
+aprender = "0.14"                                       # Sparse matrix ops, PageRank (crates.io)
+trueno = "0.7.3"                                        # SIMD primitives (crates.io)
+trueno-db = "0.3.4"                                     # Columnar storage (crates.io)
 
 # Phase 3: GPU acceleration (optional - requires wgpu-capable hardware)
 wgpu = { version = "22", optional = true, features = ["wgsl"] }
