@@ -95,6 +95,11 @@ name = "gpu_algorithms"
 harness = false
 required-features = ["gpu"]
 
+# GPU Examples (require gpu feature)
+[[example]]
+name = "paging_demo"
+required-features = ["gpu"]
+
 # Phase 4 Benchmarks (Community detection, Pattern matching)
 [[bench]]
 name = "phase4_algorithms"

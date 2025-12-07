@@ -1,9 +1,26 @@
+<div align="center">
+
 # trueno-graph
 
-**GPU-first embedded graph database for code analysis (call graphs, dependencies, AST traversals)**
+**GPU-first embedded graph database for code analysis**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Rust](https://img.shields.io/badge/rust-1.75%2B-orange.svg)](https://www.rust-lang.org)
+[![crates.io](https://img.shields.io/crates/v/trueno-graph.svg)](https://crates.io/crates/trueno-graph)
+
+*Call graphs, dependencies, AST traversals with 10-250× GPU acceleration*
+
+</div>
+
+## Table of Contents
+
+- [Quick Start](#quick-start)
+- [Features](#features)
+- [Performance](#performance)
+- [Installation](#installation)
+- [Documentation](#documentation)
+- [Architecture](#architecture)
+- [Academic Foundation](#academic-foundation)
 
 ---
 
