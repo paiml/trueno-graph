@@ -1,14 +1,24 @@
 <div align="center">
 
-# trueno-graph
+<p align="center">
+  <img src=".github/trueno-graph-hero.svg" alt="trueno-graph" width="800">
+</p>
 
-**GPU-first embedded graph database for code analysis**
+<h1 align="center">trueno-graph</h1>
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
-[![Rust](https://img.shields.io/badge/rust-1.75%2B-orange.svg)](https://www.rust-lang.org)
-[![crates.io](https://img.shields.io/crates/v/trueno-graph.svg)](https://crates.io/crates/trueno-graph)
+<p align="center">
+  <b>GPU-First Embedded Graph Database for Code Analysis</b>
+</p>
 
-*Call graphs, dependencies, AST traversals with 10-250× GPU acceleration*
+<p align="center">
+  <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License"></a>
+  <a href="https://www.rust-lang.org"><img src="https://img.shields.io/badge/rust-1.75%2B-orange.svg" alt="Rust"></a>
+  <a href="https://crates.io/crates/trueno-graph"><img src="https://img.shields.io/crates/v/trueno-graph.svg" alt="Crates.io"></a>
+</p>
+
+<p align="center">
+  <i>Call graphs, dependencies, AST traversals with 10-250x GPU acceleration</i>
+</p>
 
 </div>
 
