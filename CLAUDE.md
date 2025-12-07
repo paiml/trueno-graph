@@ -265,6 +265,62 @@ make docs  # Open rustdoc in browser (cargo doc --all-features --no-deps --open)
 - `GPU_BFS_STATUS.md`: GPU implementation details (if present)
 - Inline rustdoc: All public APIs documented
 
+## Backend Story Policy (CRITICAL - NEVER VIOLATE)
+
+### Zero Tolerance Backend Requirements
+
+**ALL operations in trueno-graph MUST work on ALL backends:**
+
+| Backend | Description | When Used |
+|---------|-------------|-----------|
+| **CPU/SIMD** | aprender sparse ops (trueno SIMD underneath) | Default path |
+| **GPU** | wgpu compute shaders (BFS, PageRank) | Large graphs (>10K nodes) |
+| **Scalar** | Fallback when SIMD unavailable | Testing, compatibility |
+
+### Adding New Algorithms - Step by Step
+
+When adding ANY new algorithm to trueno-graph:
+
+1. **Implement CPU version first** using aprender/trueno (SIMD-accelerated)
+2. **Add unit tests** verifying correctness
+3. **If performance-critical**, implement GPU version in `src/gpu/`
+4. **Add equivalence test** to `tests/backend_story.rs` (CPU == GPU)
+5. **Verify** with `cargo test --test backend_story`
+
+### Enforcement Mechanisms
+
+1. **Pre-commit hook**: Runs `cargo test --test backend_story` before every commit
+2. **CI pipeline**: Blocks PRs that break backend story tests
+3. **CLAUDE.md**: This policy is read by Claude Code for enforcement
+4. **Code review**: Backend equivalence is mandatory review criteria
+
+### Common Violations to Avoid
+
+```rust
+// BAD: GPU-only algorithm
+pub async fn new_algorithm(&self) -> Result<Vec<u32>> {
+    self.gpu_device.compute()  // NO! What about CPU fallback?
+}
+
+// GOOD: CPU + optional GPU acceleration
+pub fn new_algorithm_cpu(graph: &CsrGraph) -> Result<Vec<u32>> { ... }
+
+#[cfg(feature = "gpu")]
+pub async fn new_algorithm_gpu(graph: &CsrGraph) -> Result<Vec<u32>> { ... }
+```
+
+### Backend Story Tests
+
+Run these tests before ANY commit:
+
+```bash
+# CPU backends (always runs)
+cargo test --test backend_story
+
+# With GPU backends (requires hardware)
+cargo test --test backend_story --features gpu
+```
+
 ## Related Projects
 
 **PAIML Infrastructure**:
