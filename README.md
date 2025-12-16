@@ -4,8 +4,7 @@
 
 **GPU-First Embedded Graph Database for Code Analysis**
 
-[![Crates.io](https://img.shields.io/crates/v/trueno-graph.svg)](https://crates.io/crates/trueno-graph)
-[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![CI](https://github.com/paiml/trueno-graph/actions/workflows/ci.yml/badge.svg)](https://github.com/paiml/trueno-graph/actions)
 
 </div>
 
