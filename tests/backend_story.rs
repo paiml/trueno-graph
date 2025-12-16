@@ -61,10 +61,7 @@ fn test_csr_graph_construction() {
     let graph = build_test_graph();
 
     // Verify node count (nodes 0-4)
-    assert!(
-        graph.num_nodes() >= 5,
-        "Graph should have at least 5 nodes"
-    );
+    assert!(graph.num_nodes() >= 5, "Graph should have at least 5 nodes");
 
     // Verify edge count
     assert_eq!(graph.num_edges(), 5, "Graph should have 5 edges");
@@ -304,8 +301,8 @@ fn test_pattern_detection_god_class() {
     }
     let graph = CsrGraph::from_edge_list(&edges).unwrap();
 
-    let patterns = find_patterns(&graph, &Pattern::god_class(5))
-        .expect("Pattern detection should succeed");
+    let patterns =
+        find_patterns(&graph, &Pattern::god_class(5)).expect("Pattern detection should succeed");
 
     // Node 0 calls 10 nodes, should be flagged as god class (threshold 5)
     assert!(
@@ -409,7 +406,9 @@ mod gpu_tests {
 mod backend_completeness {
     //! Compile-time verification that critical functions exist
 
-    use trueno_graph::{bfs, find_callers, find_patterns, louvain, pagerank, CsrGraph, NodeId, Pattern};
+    use trueno_graph::{
+        bfs, find_callers, find_patterns, louvain, pagerank, CsrGraph, NodeId, Pattern,
+    };
 
     /// Verify core algorithm functions exist
     #[test]

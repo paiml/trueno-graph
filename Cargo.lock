@@ -2437,18 +2437,18 @@ dependencies = [
 
 [[package]]
 name = "trueno"
-version = "0.8.0"
+version = "0.8.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f127ae5346273b160eb01480022bd70a46207ed9ff54b534b78c27977390dc52"
+checksum = "515837c523b407bc7a69e0dbc3d9e57ea4cd58731c276d434d7417cb9e6bf48a"
 dependencies = [
  "thiserror 2.0.17",
 ]
 
 [[package]]
 name = "trueno-db"
-version = "0.3.6"
+version = "0.3.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "04046d789d36d77551361001cd409ac64785f50539290f0a4c42e6104a3368d8"
+checksum = "f3a192da6795cb846f8a78691b7ed8debedfb0a1341b9e456aa5bf7282999b2c"
 dependencies = [
  "anyhow",
  "arrow",
@@ -2475,7 +2475,7 @@ dependencies = [
 
 [[package]]
 name = "trueno-graph"
-version = "0.1.3"
+version = "0.1.4"
 dependencies = [
  "anyhow",
  "aprender",
@@ -2487,7 +2487,7 @@ dependencies = [
  "proptest",
  "serial_test",
  "tempfile",
- "thiserror 1.0.69",
+ "thiserror 2.0.17",
  "tokio",
  "tokio-test",
  "trueno",
