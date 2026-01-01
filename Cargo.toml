@@ -1,6 +1,6 @@
 [package]
 name = "trueno-graph"
-version = "0.1.4"
+version = "0.1.5"
 edition = "2021"
 authors = ["Pragmatic AI Labs <info@paiml.com>"]
 license = "MIT"
@@ -25,8 +25,8 @@ thiserror = "2"
 
 # Phase 2+ dependencies
 aprender = "0.15"                                       # Sparse matrix ops, PageRank (crates.io)
-trueno = "0.8.7"                                        # SIMD primitives (crates.io)
-trueno-db = "0.3.7"                                     # Columnar storage (crates.io)
+trueno = "0.10.0"                                       # SIMD primitives (crates.io)
+trueno-db = "0.3.8"                                     # Columnar storage (crates.io)
 
 # Phase 3: GPU acceleration (optional - requires wgpu-capable hardware)
 wgpu = { version = "22", optional = true, features = ["wgsl"] }
