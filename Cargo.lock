@@ -75,9 +75,9 @@ checksum = "a23eb6b1614318a8071c9b2521f36b424b2c83db5eb3a0fead4a6c0809af6e61"
 
 [[package]]
 name = "aprender"
-version = "0.23.0"
+version = "0.24.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9f0da5259c3f5e51f9eb70168d53d344f100bcd7f8632ce47409870bb693bb0d"
+checksum = "d1140494fee114ac8ae686c8d4e0d859b421c8e082e7a8c4a3f67d0e3f9e2754"
 dependencies = [
  "bincode",
  "getrandom 0.2.16",
@@ -2526,7 +2526,7 @@ dependencies = [
 
 [[package]]
 name = "trueno-graph"
-version = "0.1.7"
+version = "0.1.8"
 dependencies = [
  "anyhow",
  "aprender",
