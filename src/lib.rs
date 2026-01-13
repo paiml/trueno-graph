@@ -50,8 +50,9 @@ pub mod gpu;
 
 // Re-export core types
 pub use algorithms::{
-    bfs, find_callers, find_patterns, is_cyclic, louvain, pagerank, toposort,
-    CommunityDetectionResult, Pattern, PatternMatch, Severity,
+    bfs, connected_components, dijkstra, dijkstra_path, find_callers, find_patterns, is_cyclic,
+    kosaraju_scc, louvain, pagerank, toposort, CommunityDetectionResult, Pattern, PatternMatch,
+    Severity,
 };
 pub use storage::{CsrGraph, NodeId};
 
