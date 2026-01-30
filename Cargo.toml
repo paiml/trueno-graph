@@ -1,6 +1,6 @@
 [package]
 name = "trueno-graph"
-version = "0.1.13"
+version = "0.1.14"
 edition = "2021"
 authors = ["Pragmatic AI Labs <info@paiml.com>"]
 license = "MIT"
@@ -24,7 +24,7 @@ anyhow = "1"
 thiserror = "2"
 
 # Phase 2+ dependencies
-aprender = "0.24"                                       # Sparse matrix ops, PageRank (crates.io)
+aprender = "0.25"                                       # Sparse matrix ops, PageRank (crates.io)
 trueno = "0.14.2"                                         # SIMD primitives (crates.io)
 trueno-db = "0.3.13"                                       # Columnar storage (crates.io)
 
