@@ -31,3 +31,10 @@ golden_traces/
 scripts/
 renacer.toml
 GOLDEN_TRACE_INTEGRATION_SUMMARY.md
+
+# PMAT
+.pmat/backup/
+.pmat-qa/
+.pmat/context.idx/
+.pmat/workspace.idx/
+.pmat/deps-cache.json

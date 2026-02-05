@@ -13,6 +13,37 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Quality tools**: pmat + certeza + bashrs enforcement
 - **Zero tolerance**: No clippy warnings with `-D warnings`
 
+## Code Search (pmat query)
+
+**NEVER use grep or rg for code discovery.** Use `pmat query` instead -- it returns quality-annotated, ranked results with TDG scores and fault annotations.
+
+```bash
+# Find functions by intent
+pmat query "graph traversal" --limit 10
+
+# Find high-quality code
+pmat query "pagerank" --min-grade A --exclude-tests
+
+# Find with fault annotations (unwrap, panic, unsafe, etc.)
+pmat query "edge indexing" --faults
+
+# Filter by complexity
+pmat query "shortest path" --max-complexity 10
+
+# Cross-project search
+pmat query "simd acceleration" --include-project ../trueno
+
+# Git history search (find code by commit intent via RRF fusion)
+pmat query "fix cycle detection" -G
+pmat query "fix cycle detection" --git-history
+
+# Enrichment flags (combine freely)
+pmat query "graph query" --churn              # git volatility (commit count, churn score)
+pmat query "index builder" --duplicates          # code clone detection (MinHash+LSH)
+pmat query "traversal" --entropy             # pattern diversity (repetitive vs unique)
+pmat query "graph algorithm" --churn --duplicates --entropy --faults -G  # full audit
+```
+
 ## Build & Development Commands
 
 ### Basic Development
