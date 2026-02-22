@@ -20,10 +20,12 @@
 //! let callees = graph.outgoing_neighbors(NodeId(0))?;
 //! assert_eq!(callees.len(), 2);
 //!
-//! // Save to Parquet
+//! // Save to Parquet (requires "storage" feature, enabled by default)
+//! #[cfg(feature = "storage")]
 //! graph.write_parquet("graph.parquet").await?;
 //!
 //! // Load from disk
+//! #[cfg(feature = "storage")]
 //! let loaded = CsrGraph::read_parquet("graph.parquet").await?;
 //! # Ok(())
 //! # }

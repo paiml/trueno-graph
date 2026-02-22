@@ -1,6 +1,6 @@
 [package]
 name = "trueno-graph"
-version = "0.1.16"
+version = "0.1.17"
 edition = "2021"
 authors = ["Pragmatic AI Labs <info@paiml.com>"]
 license = "MIT"
@@ -14,8 +14,8 @@ readme = "README.md"
 [dependencies]
 # Data formats (columnar) - MVP uses Arrow/Parquet directly
 # Minimal features: drops arrow-csv, arrow-json (~fewer transitive deps)
-arrow = { version = "54", default-features = false }    # RecordBatch zero-copy
-parquet = "54"                                          # Persistent storage
+arrow = { version = "54", default-features = false, optional = true }  # RecordBatch zero-copy
+parquet = { version = "54", optional = true }                       # Persistent storage
 
 # Async runtime (required for I/O)
 tokio = { version = "1", features = ["rt", "fs", "sync", "macros"] }
@@ -50,7 +50,10 @@ tempfile = "3"                                          # Temporary directories 
 criterion = { version = "0.6", features = ["html_reports"] }
 
 [features]
-default = []
+default = ["storage"]
+
+# Parquet/Arrow storage for graph persistence
+storage = ["dep:arrow", "dep:parquet"]
 
 # GPU acceleration (Phase 3)
 gpu = ["wgpu", "bytemuck", "futures-intrusive"]
