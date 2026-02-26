@@ -67,10 +67,8 @@ impl GpuDevice {
     /// Returns `GpuDeviceError` if device initialization fails
     pub async fn new_with_backend(backends: wgpu::Backends) -> Result<Self, GpuDeviceError> {
         // Create wgpu instance
-        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
-            backends,
-            ..Default::default()
-        });
+        let instance =
+            wgpu::Instance::new(wgpu::InstanceDescriptor { backends, ..Default::default() });
 
         // Request adapter (GPU)
         let adapter = instance
@@ -96,11 +94,7 @@ impl GpuDevice {
             .await
             .map_err(|e| GpuDeviceError::DeviceRequest(e.to_string()))?;
 
-        Ok(Self {
-            device,
-            queue,
-            adapter,
-        })
+        Ok(Self { device, queue, adapter })
     }
 
     /// Check if GPU is available
@@ -126,13 +120,11 @@ impl GpuDevice {
         contents: &[u8],
         usage: wgpu::BufferUsages,
     ) -> Result<wgpu::Buffer, GpuDeviceError> {
-        Ok(self
-            .device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some(label),
-                contents,
-                usage,
-            }))
+        Ok(self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some(label),
+            contents,
+            usage,
+        }))
     }
 
     /// Create empty GPU buffer
@@ -204,10 +196,7 @@ mod tests {
     async fn test_gpu_device_with_invalid_backend() {
         // Try to create device with no backends (should fail)
         let device = GpuDevice::new_with_backend(wgpu::Backends::empty()).await;
-        assert!(
-            device.is_err(),
-            "Device creation should fail with empty backends"
-        );
+        assert!(device.is_err(), "Device creation should fail with empty backends");
     }
 
     #[test]
@@ -299,21 +288,15 @@ mod tests {
         let device = GpuDevice::new().await.unwrap();
 
         // Storage buffer
-        let storage = device
-            .create_buffer("storage", 512, wgpu::BufferUsages::STORAGE)
-            .unwrap();
+        let storage = device.create_buffer("storage", 512, wgpu::BufferUsages::STORAGE).unwrap();
         assert_eq!(storage.size(), 512);
 
         // Uniform buffer
-        let uniform = device
-            .create_buffer("uniform", 256, wgpu::BufferUsages::UNIFORM)
-            .unwrap();
+        let uniform = device.create_buffer("uniform", 256, wgpu::BufferUsages::UNIFORM).unwrap();
         assert_eq!(uniform.size(), 256);
 
         // Vertex buffer
-        let vertex = device
-            .create_buffer("vertex", 128, wgpu::BufferUsages::VERTEX)
-            .unwrap();
+        let vertex = device.create_buffer("vertex", 128, wgpu::BufferUsages::VERTEX).unwrap();
         assert_eq!(vertex.size(), 128);
     }
 }

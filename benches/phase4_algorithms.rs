@@ -53,9 +53,7 @@ fn generate_community_graph(num_communities: usize, nodes_per_community: usize) 
         // Sparse inter-community connections
         if comm < num_communities - 1 {
             let next_base = ((comm + 1) * nodes_per_community) as u32;
-            graph
-                .add_edge(NodeId(base), NodeId(next_base), 1.0)
-                .unwrap();
+            graph.add_edge(NodeId(base), NodeId(next_base), 1.0).unwrap();
         }
     }
 

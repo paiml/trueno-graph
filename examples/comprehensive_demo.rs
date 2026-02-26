@@ -54,11 +54,7 @@ fn build_call_graph() -> Result<CsrGraph, Box<dyn std::error::Error>> {
     graph.set_node_name(NodeId(3), "validate".to_string());
     graph.set_node_name(NodeId(4), "logger".to_string());
 
-    println!(
-        "✓ Built call graph with {} nodes and {} edges",
-        graph.num_nodes(),
-        graph.num_edges()
-    );
+    println!("✓ Built call graph with {} nodes and {} edges", graph.num_nodes(), graph.num_edges());
     println!();
 
     Ok(graph)
@@ -203,11 +199,7 @@ fn demo_dead_code_pattern(graph: &CsrGraph) -> Result<(), Box<dyn std::error::Er
     let matches = find_patterns(graph, &pattern)?;
     println!("   Found {} dead code instances", matches.len());
     for m in &matches {
-        println!(
-            "   - Node {:?} (Severity: {:?})",
-            m.node_mapping.get(&0),
-            m.severity
-        );
+        println!("   - Node {:?} (Severity: {:?})", m.node_mapping.get(&0), m.severity);
     }
     println!();
     Ok(())

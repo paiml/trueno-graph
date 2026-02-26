@@ -108,11 +108,7 @@ pub fn louvain(graph: &CsrGraph) -> Result<CommunityDetectionResult> {
 
     let num_communities = converted_communities.len();
 
-    Ok(CommunityDetectionResult {
-        communities: converted_communities,
-        num_communities,
-        modularity,
-    })
+    Ok(CommunityDetectionResult { communities: converted_communities, num_communities, modularity })
 }
 
 /// Convert `CsrGraph` to aprender `Graph` format
@@ -153,10 +149,7 @@ mod tests {
 
         let result = louvain(&graph).unwrap();
 
-        assert_eq!(
-            result.num_communities, 1,
-            "Triangle should form 1 community"
-        );
+        assert_eq!(result.num_communities, 1, "Triangle should form 1 community");
 
         // All nodes should be in the same community
         let comm_0 = result.get_community(NodeId(0));
@@ -191,16 +184,10 @@ mod tests {
         let result = louvain(&graph).unwrap();
 
         // Should find 2 communities (one per triangle)
-        assert!(
-            result.num_communities >= 1,
-            "Should find at least 1 community"
-        );
+        assert!(result.num_communities >= 1, "Should find at least 1 community");
 
         // Modularity should be positive (indicates good community structure)
-        assert!(
-            result.modularity > 0.0,
-            "Modularity should be positive for community structure"
-        );
+        assert!(result.modularity > 0.0, "Modularity should be positive for community structure");
     }
 
     #[test]
@@ -233,20 +220,14 @@ mod tests {
         let comm_3 = result.get_community(NodeId(3));
 
         assert!(comm_0.is_some() && comm_3.is_some());
-        assert_ne!(
-            comm_0, comm_3,
-            "Disconnected components should be in different communities"
-        );
+        assert_ne!(comm_0, comm_3, "Disconnected components should be in different communities");
     }
 
     #[test]
     fn test_community_detection_result_api() {
         // Test CommunityDetectionResult helper methods
         let result = CommunityDetectionResult {
-            communities: vec![
-                vec![NodeId(0), NodeId(1), NodeId(2)],
-                vec![NodeId(3), NodeId(4)],
-            ],
+            communities: vec![vec![NodeId(0), NodeId(1), NodeId(2)], vec![NodeId(3), NodeId(4)]],
             num_communities: 2,
             modularity: 0.42,
         };
@@ -261,10 +242,7 @@ mod tests {
             result.get_community_nodes(0),
             Some(&[NodeId(0), NodeId(1), NodeId(2)] as &[NodeId])
         );
-        assert_eq!(
-            result.get_community_nodes(1),
-            Some(&[NodeId(3), NodeId(4)] as &[NodeId])
-        );
+        assert_eq!(result.get_community_nodes(1), Some(&[NodeId(3), NodeId(4)] as &[NodeId]));
         assert_eq!(result.get_community_nodes(2), None);
 
         // Test community_size

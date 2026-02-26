@@ -104,16 +104,12 @@ fn bench_gpu_pagerank(c: &mut Criterion) {
         let graph = CsrGraph::from_edge_list(&edges).unwrap();
 
         // CPU PageRank baseline
-        group.bench_with_input(
-            BenchmarkId::new("cpu_pagerank", size),
-            &graph,
-            |b, graph| {
-                b.iter(|| {
-                    let scores = pagerank(black_box(graph), 20, 1e-6).unwrap();
-                    black_box(scores);
-                });
-            },
-        );
+        group.bench_with_input(BenchmarkId::new("cpu_pagerank", size), &graph, |b, graph| {
+            b.iter(|| {
+                let scores = pagerank(black_box(graph), 20, 1e-6).unwrap();
+                black_box(scores);
+            });
+        });
 
         // GPU PageRank
         let buffers = GpuCsrBuffers::from_csr_graph(&device, &graph).unwrap();
@@ -180,10 +176,5 @@ fn bench_gpu_buffer_upload(c: &mut Criterion) {
     group.finish();
 }
 
-criterion_group!(
-    benches,
-    bench_gpu_bfs,
-    bench_gpu_pagerank,
-    bench_gpu_buffer_upload
-);
+criterion_group!(benches, bench_gpu_bfs, bench_gpu_pagerank, bench_gpu_buffer_upload);
 criterion_main!(benches);

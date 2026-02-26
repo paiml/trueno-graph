@@ -31,10 +31,7 @@ impl GpuBfsResult {
     /// Get distance to a specific node
     #[must_use]
     pub fn distance(&self, node: NodeId) -> Option<u32> {
-        self.distances
-            .get(node.0 as usize)
-            .copied()
-            .filter(|&d| d != u32::MAX)
+        self.distances.get(node.0 as usize).copied().filter(|&d| d != u32::MAX)
     }
 
     /// Check if node is reachable from source
@@ -52,9 +49,8 @@ async fn read_buffer_u32(device: &GpuDevice, buffer: &wgpu::Buffer) -> Result<u3
         wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
     )?;
 
-    let mut encoder = device
-        .device()
-        .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
+    let mut encoder =
+        device.device().create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
     encoder.copy_buffer_to_buffer(buffer, 0, &staging_buffer, 0, 4);
     device.queue().submit(Some(encoder.finish()));
 
@@ -66,10 +62,7 @@ async fn read_buffer_u32(device: &GpuDevice, buffer: &wgpu::Buffer) -> Result<u3
     });
 
     device.device().poll(wgpu::Maintain::Wait);
-    rx.receive()
-        .await
-        .context("Failed to receive map result")?
-        .context("Buffer mapping failed")?;
+    rx.receive().await.context("Failed to receive map result")?.context("Buffer mapping failed")?;
 
     let data = buffer_slice.get_mapped_range();
     let value = u32::from_ne_bytes(data[0..4].try_into()?);
@@ -92,9 +85,8 @@ async fn read_distances(
         wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
     )?;
 
-    let mut encoder = device
-        .device()
-        .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
+    let mut encoder =
+        device.device().create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
     encoder.copy_buffer_to_buffer(distances_buffer, 0, &staging_buffer, 0, size);
     device.queue().submit(Some(encoder.finish()));
 
@@ -106,10 +98,7 @@ async fn read_distances(
     });
 
     device.device().poll(wgpu::Maintain::Wait);
-    rx.receive()
-        .await
-        .context("Failed to receive map result")?
-        .context("Buffer mapping failed")?;
+    rx.receive().await.context("Failed to receive map result")?.context("Buffer mapping failed")?;
 
     let data = buffer_slice.get_mapped_range();
     let distances: Vec<u32> = bytemuck::cast_slice(&data).to_vec();
@@ -158,98 +147,90 @@ pub async fn gpu_bfs(
 ) -> Result<GpuBfsResult> {
     // Step 1: Load WGSL shader
     const SHADER: &str = include_str!("shaders/bfs_simple.wgsl");
-    let shader_module = device
-        .device()
-        .create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("BFS Shader"),
-            source: wgpu::ShaderSource::Wgsl(SHADER.into()),
-        });
+    let shader_module = device.device().create_shader_module(wgpu::ShaderModuleDescriptor {
+        label: Some("BFS Shader"),
+        source: wgpu::ShaderSource::Wgsl(SHADER.into()),
+    });
 
     // Step 2: Create bind group layout
     let bind_group_layout =
-        device
-            .device()
-            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                label: Some("BFS Bind Group Layout"),
-                entries: &[
-                    // @binding(0): uniform params
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Uniform,
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
+        device.device().create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("BFS Bind Group Layout"),
+            entries: &[
+                // @binding(0): uniform params
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
                     },
-                    // @binding(1): storage row_offsets (read)
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 1,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: true },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
+                    count: None,
+                },
+                // @binding(1): storage row_offsets (read)
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
                     },
-                    // @binding(2): storage col_indices (read)
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 2,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: true },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
+                    count: None,
+                },
+                // @binding(2): storage col_indices (read)
+                wgpu::BindGroupLayoutEntry {
+                    binding: 2,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
                     },
-                    // @binding(3): storage distances (read_write, atomic)
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 3,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: false },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
+                    count: None,
+                },
+                // @binding(3): storage distances (read_write, atomic)
+                wgpu::BindGroupLayoutEntry {
+                    binding: 3,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: false },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
                     },
-                    // @binding(4): storage updated (read_write, atomic)
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 4,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: false },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
+                    count: None,
+                },
+                // @binding(4): storage updated (read_write, atomic)
+                wgpu::BindGroupLayoutEntry {
+                    binding: 4,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: false },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
                     },
-                ],
-            });
-
-    // Step 3: Create compute pipeline
-    let pipeline_layout = device
-        .device()
-        .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("BFS Pipeline Layout"),
-            bind_group_layouts: &[&bind_group_layout],
-            push_constant_ranges: &[],
+                    count: None,
+                },
+            ],
         });
 
+    // Step 3: Create compute pipeline
+    let pipeline_layout = device.device().create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+        label: Some("BFS Pipeline Layout"),
+        bind_group_layouts: &[&bind_group_layout],
+        push_constant_ranges: &[],
+    });
+
     let compute_pipeline =
-        device
-            .device()
-            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                label: Some("BFS Pipeline"),
-                layout: Some(&pipeline_layout),
-                module: &shader_module,
-                entry_point: "bfs_level",
-                compilation_options: wgpu::PipelineCompilationOptions::default(),
-                cache: None,
-            });
+        device.device().create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            label: Some("BFS Pipeline"),
+            layout: Some(&pipeline_layout),
+            module: &shader_module,
+            entry_point: "bfs_level",
+            compilation_options: wgpu::PipelineCompilationOptions::default(),
+            cache: None,
+        });
 
     // Step 4: Create auxiliary buffers
     let num_nodes = buffers.num_nodes();
@@ -286,34 +267,17 @@ pub async fn gpu_bfs(
     )?;
 
     // Step 5: Create bind group
-    let bind_group = device
-        .device()
-        .create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("BFS Bind Group"),
-            layout: &bind_group_layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: params_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: buffers.row_offsets.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
-                    resource: buffers.col_indices.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 3,
-                    resource: distances_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 4,
-                    resource: updated_buffer.as_entire_binding(),
-                },
-            ],
-        });
+    let bind_group = device.device().create_bind_group(&wgpu::BindGroupDescriptor {
+        label: Some("BFS Bind Group"),
+        layout: &bind_group_layout,
+        entries: &[
+            wgpu::BindGroupEntry { binding: 0, resource: params_buffer.as_entire_binding() },
+            wgpu::BindGroupEntry { binding: 1, resource: buffers.row_offsets.as_entire_binding() },
+            wgpu::BindGroupEntry { binding: 2, resource: buffers.col_indices.as_entire_binding() },
+            wgpu::BindGroupEntry { binding: 3, resource: distances_buffer.as_entire_binding() },
+            wgpu::BindGroupEntry { binding: 4, resource: updated_buffer.as_entire_binding() },
+        ],
+    });
 
     // Step 6: BFS dispatch loop
     let workgroup_size = 256;
@@ -321,9 +285,7 @@ pub async fn gpu_bfs(
 
     for level in 0..num_nodes {
         // Reset updated flag to 0
-        device
-            .queue()
-            .write_buffer(&updated_buffer, 0, bytemuck::bytes_of(&0u32));
+        device.queue().write_buffer(&updated_buffer, 0, bytemuck::bytes_of(&0u32));
 
         // Update params with current level
         device.queue().write_buffer(
@@ -338,11 +300,9 @@ pub async fn gpu_bfs(
         );
 
         // Create command encoder
-        let mut encoder = device
-            .device()
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("BFS Command Encoder"),
-            });
+        let mut encoder = device.device().create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("BFS Command Encoder"),
+        });
 
         {
             let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -374,10 +334,7 @@ pub async fn gpu_bfs(
     let distances = read_distances(device, &distances_buffer, num_nodes).await?;
     let visited_count = distances.iter().filter(|&&d| d != u32::MAX).count();
 
-    Ok(GpuBfsResult {
-        distances,
-        visited_count,
-    })
+    Ok(GpuBfsResult { distances, visited_count })
 }
 
 #[cfg(test)]
@@ -431,10 +388,7 @@ mod tests {
 
     #[test]
     fn test_gpu_bfs_result_api() {
-        let result = GpuBfsResult {
-            distances: vec![0, 1, u32::MAX],
-            visited_count: 2,
-        };
+        let result = GpuBfsResult { distances: vec![0, 1, u32::MAX], visited_count: 2 };
 
         assert_eq!(result.distance(NodeId(0)), Some(0));
         assert_eq!(result.distance(NodeId(1)), Some(1));

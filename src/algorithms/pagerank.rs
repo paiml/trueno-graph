@@ -117,11 +117,7 @@ pub fn pagerank(graph: &CsrGraph, max_iterations: usize, tolerance: f32) -> Resu
 
         if diff < tolerance {
             #[cfg(test)]
-            eprintln!(
-                "PageRank converged after {} iterations (diff={:.2e})",
-                iteration + 1,
-                diff
-            );
+            eprintln!("PageRank converged after {} iterations (diff={:.2e})", iteration + 1, diff);
             break;
         }
     }
@@ -150,14 +146,8 @@ mod tests {
         assert!((sum - 1.0).abs() < 1e-5, "Sum = {sum}");
 
         // In a chain, last node gets highest score (sink node)
-        assert!(
-            scores[2] > scores[1],
-            "Node 2 should have higher score than 1"
-        );
-        assert!(
-            scores[1] > scores[0],
-            "Node 1 should have higher score than 0"
-        );
+        assert!(scores[2] > scores[1], "Node 2 should have higher score than 1");
+        assert!(scores[1] > scores[0], "Node 1 should have higher score than 0");
     }
 
     #[test]

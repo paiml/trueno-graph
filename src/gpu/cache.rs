@@ -28,11 +28,7 @@ impl LruTileCache {
     /// Create new LRU cache with given capacity
     #[must_use]
     pub fn new(capacity: usize) -> Self {
-        Self {
-            capacity: capacity.max(1),
-            buffers: HashMap::new(),
-            access_order: VecDeque::new(),
-        }
+        Self { capacity: capacity.max(1), buffers: HashMap::new(), access_order: VecDeque::new() }
     }
 
     /// Get buffer from cache (marks as recently used)
@@ -123,18 +119,10 @@ mod tests {
         let mut cache = LruTileCache::new(3);
 
         // Create test buffers
-        let buf1 = device
-            .create_buffer("tile_1", 1024, wgpu::BufferUsages::STORAGE)
-            .unwrap();
-        let buf2 = device
-            .create_buffer("tile_2", 1024, wgpu::BufferUsages::STORAGE)
-            .unwrap();
-        let buf3 = device
-            .create_buffer("tile_3", 1024, wgpu::BufferUsages::STORAGE)
-            .unwrap();
-        let buf4 = device
-            .create_buffer("tile_4", 1024, wgpu::BufferUsages::STORAGE)
-            .unwrap();
+        let buf1 = device.create_buffer("tile_1", 1024, wgpu::BufferUsages::STORAGE).unwrap();
+        let buf2 = device.create_buffer("tile_2", 1024, wgpu::BufferUsages::STORAGE).unwrap();
+        let buf3 = device.create_buffer("tile_3", 1024, wgpu::BufferUsages::STORAGE).unwrap();
+        let buf4 = device.create_buffer("tile_4", 1024, wgpu::BufferUsages::STORAGE).unwrap();
 
         // Insert 3 buffers
         assert_eq!(cache.insert(1, buf1), None);
@@ -172,12 +160,9 @@ mod tests {
         let device = GpuDevice::new().await.unwrap();
         let mut cache = LruTileCache::new(2);
 
-        let buf1 = device
-            .create_buffer("tile_1", 1024, wgpu::BufferUsages::STORAGE)
-            .unwrap();
-        let buf1_new = device
-            .create_buffer("tile_1_new", 1024, wgpu::BufferUsages::STORAGE)
-            .unwrap();
+        let buf1 = device.create_buffer("tile_1", 1024, wgpu::BufferUsages::STORAGE).unwrap();
+        let buf1_new =
+            device.create_buffer("tile_1_new", 1024, wgpu::BufferUsages::STORAGE).unwrap();
 
         // Insert tile 1
         assert_eq!(cache.insert(1, buf1), None);
@@ -199,12 +184,8 @@ mod tests {
         let device = GpuDevice::new().await.unwrap();
         let mut cache = LruTileCache::new(3);
 
-        let buf1 = device
-            .create_buffer("tile_1", 1024, wgpu::BufferUsages::STORAGE)
-            .unwrap();
-        let buf2 = device
-            .create_buffer("tile_2", 1024, wgpu::BufferUsages::STORAGE)
-            .unwrap();
+        let buf1 = device.create_buffer("tile_1", 1024, wgpu::BufferUsages::STORAGE).unwrap();
+        let buf2 = device.create_buffer("tile_2", 1024, wgpu::BufferUsages::STORAGE).unwrap();
 
         cache.insert(1, buf1);
         cache.insert(2, buf2);

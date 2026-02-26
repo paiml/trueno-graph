@@ -70,13 +70,7 @@ impl GpuCsrBuffers {
             )?)
         };
 
-        Ok(Self {
-            num_nodes,
-            num_edges,
-            row_offsets,
-            col_indices,
-            edge_weights,
-        })
+        Ok(Self { num_nodes, num_edges, row_offsets, col_indices, edge_weights })
     }
 
     /// Get number of nodes
@@ -167,9 +161,7 @@ mod tests {
         // Create larger graph
         let mut graph = CsrGraph::new();
         for i in 0..100 {
-            graph
-                .add_edge(NodeId(i), NodeId((i + 1) % 100), 1.0)
-                .unwrap();
+            graph.add_edge(NodeId(i), NodeId((i + 1) % 100), 1.0).unwrap();
         }
 
         let buffers = GpuCsrBuffers::from_csr_graph(&device, &graph).unwrap();

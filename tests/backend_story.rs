@@ -156,10 +156,7 @@ fn test_find_callers() {
     assert!(callers.contains(&2), "Node 2 should be a caller of 4");
 
     // Node 0 can reach 4 via 1→4 or 2→4 (transitive caller)
-    assert!(
-        callers.contains(&0),
-        "Node 0 should be a caller of 4 (indirectly)"
-    );
+    assert!(callers.contains(&0), "Node 0 should be a caller of 4 (indirectly)");
 }
 
 /// Test find_callers with depth limit
@@ -172,10 +169,7 @@ fn test_find_callers_depth_limit() {
     assert!(callers.contains(&1), "Node 1 directly calls 4");
     assert!(callers.contains(&2), "Node 2 directly calls 4");
     // Node 0 is depth 2, should NOT be included
-    assert!(
-        !callers.contains(&0),
-        "Node 0 should NOT be included at depth 1"
-    );
+    assert!(!callers.contains(&0), "Node 0 should NOT be included at depth 1");
 }
 
 // ============================================================================
@@ -197,10 +191,7 @@ fn test_pagerank_basic() {
 
     // Scores should sum to approximately 1.0 (normalized)
     let sum: f32 = scores.iter().sum();
-    assert!(
-        (sum - 1.0).abs() < 0.1,
-        "PageRank scores should sum to ~1.0, got {sum}"
-    );
+    assert!((sum - 1.0).abs() < 0.1, "PageRank scores should sum to ~1.0, got {sum}");
 }
 
 /// Test PageRank converges for larger graphs
@@ -259,11 +250,7 @@ fn test_louvain_basic() {
     );
 
     // Modularity should be positive for graphs with community structure
-    assert!(
-        result.modularity > 0.0,
-        "Modularity should be positive, got {}",
-        result.modularity
-    );
+    assert!(result.modularity > 0.0, "Modularity should be positive, got {}", result.modularity);
 }
 
 // ============================================================================
@@ -285,10 +272,7 @@ fn test_pattern_detection_circular() {
         .expect("Pattern detection should succeed");
 
     // Should find the circular dependency
-    assert!(
-        !patterns.is_empty(),
-        "Should detect the circular dependency (3-cycle)"
-    );
+    assert!(!patterns.is_empty(), "Should detect the circular dependency (3-cycle)");
 }
 
 /// Test pattern detection for god class
@@ -305,10 +289,7 @@ fn test_pattern_detection_god_class() {
         find_patterns(&graph, &Pattern::god_class(5)).expect("Pattern detection should succeed");
 
     // Node 0 calls 10 nodes, should be flagged as god class (threshold 5)
-    assert!(
-        !patterns.is_empty(),
-        "Should detect god class (node 0 has 10 callees)"
-    );
+    assert!(!patterns.is_empty(), "Should detect god class (node 0 has 10 callees)");
 }
 
 // ============================================================================
@@ -349,18 +330,13 @@ mod gpu_tests {
         let cpu_result = bfs(&graph, NodeId(0)).expect("CPU BFS should succeed");
 
         // GPU BFS
-        let gpu_result = gpu_bfs(&graph, NodeId(0))
-            .await
-            .expect("GPU BFS should succeed");
+        let gpu_result = gpu_bfs(&graph, NodeId(0)).await.expect("GPU BFS should succeed");
 
         // Results should have same set of reachable nodes
         let cpu_set: std::collections::HashSet<_> = cpu_result.into_iter().collect();
         let gpu_set: std::collections::HashSet<_> = gpu_result.reachable.into_iter().collect();
 
-        assert_eq!(
-            cpu_set, gpu_set,
-            "CPU and GPU BFS should produce same reachable nodes"
-        );
+        assert_eq!(cpu_set, gpu_set, "CPU and GPU BFS should produce same reachable nodes");
     }
 
     /// Test GPU BFS with larger graph
@@ -374,15 +350,10 @@ mod gpu_tests {
         let graph = build_large_test_graph(1000);
 
         // GPU BFS should handle larger graphs
-        let result = gpu_bfs(&graph, NodeId(0))
-            .await
-            .expect("GPU BFS should succeed");
+        let result = gpu_bfs(&graph, NodeId(0)).await.expect("GPU BFS should succeed");
 
         // Should have visited nodes
-        assert!(
-            !result.reachable.is_empty(),
-            "GPU BFS should find reachable nodes"
-        );
+        assert!(!result.reachable.is_empty(), "GPU BFS should find reachable nodes");
     }
 }
 

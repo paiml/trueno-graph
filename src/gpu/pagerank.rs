@@ -47,9 +47,8 @@ async fn read_scores(
         wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
     )?;
 
-    let mut encoder = device
-        .device()
-        .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
+    let mut encoder =
+        device.device().create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
     encoder.copy_buffer_to_buffer(scores_buffer, 0, &staging_buffer, 0, size);
     device.queue().submit(Some(encoder.finish()));
 
@@ -61,10 +60,7 @@ async fn read_scores(
     });
 
     device.device().poll(wgpu::Maintain::Wait);
-    rx.receive()
-        .await
-        .context("Failed to receive map result")?
-        .context("Buffer mapping failed")?;
+    rx.receive().await.context("Failed to receive map result")?.context("Buffer mapping failed")?;
 
     let data = buffer_slice.get_mapped_range();
     let scores: Vec<f32> = bytemuck::cast_slice(&data).to_vec();
@@ -124,109 +120,101 @@ pub async fn gpu_pagerank(
 ) -> Result<GpuPageRankResult> {
     // Step 1: Load WGSL shader
     const SHADER: &str = include_str!("shaders/pagerank.wgsl");
-    let shader_module = device
-        .device()
-        .create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("PageRank Shader"),
-            source: wgpu::ShaderSource::Wgsl(SHADER.into()),
-        });
+    let shader_module = device.device().create_shader_module(wgpu::ShaderModuleDescriptor {
+        label: Some("PageRank Shader"),
+        source: wgpu::ShaderSource::Wgsl(SHADER.into()),
+    });
 
     // Step 2: Create bind group layout
     let bind_group_layout =
-        device
-            .device()
-            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                label: Some("PageRank Bind Group Layout"),
-                entries: &[
-                    // @binding(0): uniform params
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Uniform,
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
+        device.device().create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("PageRank Bind Group Layout"),
+            entries: &[
+                // @binding(0): uniform params
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
                     },
-                    // @binding(1): storage row_offsets (read)
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 1,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: true },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
+                    count: None,
+                },
+                // @binding(1): storage row_offsets (read)
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
                     },
-                    // @binding(2): storage col_indices (read)
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 2,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: true },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
+                    count: None,
+                },
+                // @binding(2): storage col_indices (read)
+                wgpu::BindGroupLayoutEntry {
+                    binding: 2,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
                     },
-                    // @binding(3): storage current_scores (read)
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 3,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: true },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
+                    count: None,
+                },
+                // @binding(3): storage current_scores (read)
+                wgpu::BindGroupLayoutEntry {
+                    binding: 3,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
                     },
-                    // @binding(4): storage next_scores (read_write)
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 4,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: false },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
+                    count: None,
+                },
+                // @binding(4): storage next_scores (read_write)
+                wgpu::BindGroupLayoutEntry {
+                    binding: 4,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: false },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
                     },
-                    // @binding(5): storage out_degrees (read)
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 5,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: true },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
+                    count: None,
+                },
+                // @binding(5): storage out_degrees (read)
+                wgpu::BindGroupLayoutEntry {
+                    binding: 5,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
                     },
-                ],
-            });
-
-    // Step 3: Create compute pipeline
-    let pipeline_layout = device
-        .device()
-        .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("PageRank Pipeline Layout"),
-            bind_group_layouts: &[&bind_group_layout],
-            push_constant_ranges: &[],
+                    count: None,
+                },
+            ],
         });
 
+    // Step 3: Create compute pipeline
+    let pipeline_layout = device.device().create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+        label: Some("PageRank Pipeline Layout"),
+        bind_group_layouts: &[&bind_group_layout],
+        push_constant_ranges: &[],
+    });
+
     let compute_pipeline =
-        device
-            .device()
-            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                label: Some("PageRank Pipeline"),
-                layout: Some(&pipeline_layout),
-                module: &shader_module,
-                entry_point: "pagerank_iteration",
-                compilation_options: wgpu::PipelineCompilationOptions::default(),
-                cache: None,
-            });
+        device.device().create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            label: Some("PageRank Pipeline"),
+            layout: Some(&pipeline_layout),
+            module: &shader_module,
+            entry_point: "pagerank_iteration",
+            compilation_options: wgpu::PipelineCompilationOptions::default(),
+            cache: None,
+        });
 
     // Step 4: Create auxiliary buffers
     let num_nodes = buffers.num_nodes();
@@ -280,10 +268,8 @@ pub async fn gpu_pagerank(
     for iteration in 0..max_iterations {
         // Compute dangling sum (sum of ranks from nodes with out_degree = 0)
         let current_scores = read_scores(device, &current_scores_buffer, num_nodes).await?;
-        let dangling_sum: f32 = (0..num_nodes)
-            .filter(|&i| out_degrees[i] == 0)
-            .map(|i| current_scores[i])
-            .sum();
+        let dangling_sum: f32 =
+            (0..num_nodes).filter(|&i| out_degrees[i] == 0).map(|i| current_scores[i]).sum();
 
         // Update params with current iteration and dangling sum
         device.queue().write_buffer(
@@ -298,45 +284,38 @@ pub async fn gpu_pagerank(
         );
 
         // Create bind group for this iteration
-        let bind_group = device
-            .device()
-            .create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some("PageRank Bind Group"),
-                layout: &bind_group_layout,
-                entries: &[
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: params_buffer.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 1,
-                        resource: buffers.row_offsets.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 2,
-                        resource: buffers.col_indices.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 3,
-                        resource: current_scores_buffer.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 4,
-                        resource: next_scores_buffer.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 5,
-                        resource: out_degrees_buffer.as_entire_binding(),
-                    },
-                ],
-            });
+        let bind_group = device.device().create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("PageRank Bind Group"),
+            layout: &bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry { binding: 0, resource: params_buffer.as_entire_binding() },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: buffers.row_offsets.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: buffers.col_indices.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: current_scores_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 4,
+                    resource: next_scores_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 5,
+                    resource: out_degrees_buffer.as_entire_binding(),
+                },
+            ],
+        });
 
         // Create command encoder
-        let mut encoder = device
-            .device()
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("PageRank Command Encoder"),
-            });
+        let mut encoder = device.device().create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("PageRank Command Encoder"),
+        });
 
         {
             let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -356,11 +335,9 @@ pub async fn gpu_pagerank(
         device.device().poll(wgpu::Maintain::Wait);
 
         // Swap buffers: copy next_scores to current_scores
-        let mut encoder = device
-            .device()
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("PageRank Buffer Swap"),
-            });
+        let mut encoder = device.device().create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("PageRank Buffer Swap"),
+        });
 
         let buffer_size = (num_nodes * std::mem::size_of::<f32>()) as u64;
         encoder.copy_buffer_to_buffer(
@@ -378,10 +355,7 @@ pub async fn gpu_pagerank(
     // Step 6: Read back final results
     let scores = read_scores(device, &current_scores_buffer, num_nodes).await?;
 
-    Ok(GpuPageRankResult {
-        scores,
-        iterations: max_iterations,
-    })
+    Ok(GpuPageRankResult { scores, iterations: max_iterations })
 }
 
 #[cfg(test)]
@@ -408,9 +382,7 @@ mod tests {
         let out_degrees: Vec<u32> = (0..graph.num_nodes())
             .map(|i| graph.outgoing_neighbors(NodeId(i as u32)).unwrap().len() as u32)
             .collect();
-        let result = gpu_pagerank(&device, &buffers, &out_degrees, 20, 0.85)
-            .await
-            .unwrap();
+        let result = gpu_pagerank(&device, &buffers, &out_degrees, 20, 0.85).await.unwrap();
 
         // Verify scores are reasonable
         let score_0 = result.score(0).unwrap();
@@ -431,18 +403,12 @@ mod tests {
         // Verify scores sum to approximately 1.0 (within tolerance for GPU floating point)
         let sum = score_0 + score_1 + score_2;
         println!("Sum: {sum}");
-        assert!(
-            (sum - 1.0).abs() < 0.1,
-            "Sum should be approximately 1.0, got {sum}"
-        );
+        assert!((sum - 1.0).abs() < 0.1, "Sum should be approximately 1.0, got {sum}");
     }
 
     #[test]
     fn test_gpu_pagerank_result_api() {
-        let result = GpuPageRankResult {
-            scores: vec![0.1, 0.3, 0.6],
-            iterations: 20,
-        };
+        let result = GpuPageRankResult { scores: vec![0.1, 0.3, 0.6], iterations: 20 };
 
         assert_eq!(result.score(0), Some(0.1));
         assert_eq!(result.score(1), Some(0.3));

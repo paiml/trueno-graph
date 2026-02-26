@@ -41,16 +41,43 @@ use std::collections::VecDeque;
 /// # Ok(())
 /// # }
 /// ```
+/// Process a single node's neighbors within its tile, updating distances
+#[allow(clippy::cast_possible_truncation)]
+fn process_node_neighbors(
+    coordinator: &PagingCoordinator<'_>,
+    node: NodeId,
+    distances: &mut [u32],
+    current_level: u32,
+    next_frontier: &mut Vec<NodeId>,
+) -> Result<()> {
+    let tile = coordinator.get_tile_for_node(node).context("Node not in any tile")?;
+    let node_idx_in_tile = node.0 as usize - tile.start_node;
+
+    if node_idx_in_tile >= tile.row_offsets.len() - 1 {
+        return Ok(());
+    }
+
+    let start = tile.row_offsets[node_idx_in_tile] as usize;
+    let end = tile.row_offsets[node_idx_in_tile + 1] as usize;
+
+    for &neighbor in &tile.col_indices[start..end] {
+        let neighbor_idx = neighbor as usize;
+        if distances[neighbor_idx] == u32::MAX {
+            distances[neighbor_idx] = current_level + 1;
+            next_frontier.push(NodeId(neighbor));
+        }
+    }
+    Ok(())
+}
+
 #[allow(clippy::cast_possible_truncation)]
 pub async fn gpu_bfs_paged(
     device: &GpuDevice,
     graph: &CsrGraph,
     source: NodeId,
 ) -> Result<GpuBfsResult> {
-    // Create paging coordinator
     let coordinator = PagingCoordinator::new(device, graph)?;
 
-    // If graph fits in VRAM, use regular BFS
     if coordinator.fits_in_vram() {
         return super::gpu_bfs(
             device,
@@ -60,71 +87,40 @@ pub async fn gpu_bfs_paged(
         .await;
     }
 
-    // Initialize distances for all nodes
     let num_nodes = graph.num_nodes();
     let mut distances = vec![u32::MAX; num_nodes];
     distances[source.0 as usize] = 0;
 
-    // BFS frontier (nodes to process)
     let mut frontier = VecDeque::new();
     frontier.push_back(source);
-
     let mut current_level = 0_u32;
 
-    // Create tile cache (capacity = max tiles that fit in VRAM)
-    let cache_capacity = coordinator
-        .limits()
-        .max_morsels
-        .min(coordinator.num_tiles());
+    let cache_capacity = coordinator.limits().max_morsels.min(coordinator.num_tiles());
     let mut _tile_cache = LruTileCache::new(cache_capacity);
 
-    // Process tiles tile-by-tile
     while !frontier.is_empty() {
         let mut next_frontier = Vec::new();
 
-        // Process current frontier
         for &node in &frontier {
-            // Find tile containing this node
-            let tile = coordinator
-                .get_tile_for_node(node)
-                .context("Node not in any tile")?;
-
-            // Process node's outgoing edges (within tile)
-            let node_idx_in_graph = node.0 as usize;
-            let node_idx_in_tile = node_idx_in_graph - tile.start_node;
-
-            if node_idx_in_tile >= tile.row_offsets.len() - 1 {
-                continue;
-            }
-
-            let start = tile.row_offsets[node_idx_in_tile] as usize;
-            let end = tile.row_offsets[node_idx_in_tile + 1] as usize;
-
-            // Update neighbors
-            for &neighbor in &tile.col_indices[start..end] {
-                let neighbor_idx = neighbor as usize;
-                if distances[neighbor_idx] == u32::MAX {
-                    distances[neighbor_idx] = current_level + 1;
-                    next_frontier.push(NodeId(neighbor));
-                }
-            }
+            process_node_neighbors(
+                &coordinator,
+                node,
+                &mut distances,
+                current_level,
+                &mut next_frontier,
+            )?;
         }
 
         frontier = VecDeque::from(next_frontier);
         current_level += 1;
 
-        // Safety: prevent infinite loops
         if current_level > num_nodes as u32 {
             break;
         }
     }
 
     let visited_count = distances.iter().filter(|&&d| d != u32::MAX).count();
-
-    Ok(GpuBfsResult {
-        distances,
-        visited_count,
-    })
+    Ok(GpuBfsResult { distances, visited_count })
 }
 
 #[cfg(test)]
@@ -187,9 +183,7 @@ mod tests {
         // Create larger ring graph
         let mut graph = CsrGraph::new();
         for i in 0..100 {
-            graph
-                .add_edge(NodeId(i), NodeId((i + 1) % 100), 1.0)
-                .unwrap();
+            graph.add_edge(NodeId(i), NodeId((i + 1) % 100), 1.0).unwrap();
         }
 
         let result = gpu_bfs_paged(&device, &graph, NodeId(0)).await.unwrap();

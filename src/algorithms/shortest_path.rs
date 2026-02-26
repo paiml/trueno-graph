@@ -113,10 +113,7 @@ pub fn dijkstra(graph: &CsrGraph, source: NodeId) -> HashMap<NodeId, f32> {
 
     // Start with source
     distances.insert(source, 0.0);
-    heap.push(State {
-        cost: 0.0,
-        node: source_idx,
-    });
+    heap.push(State { cost: 0.0, node: source_idx });
 
     while let Some(State { cost, node }) = heap.pop() {
         #[allow(clippy::cast_possible_truncation)]
@@ -142,10 +139,7 @@ pub fn dijkstra(graph: &CsrGraph, source: NodeId) -> HashMap<NodeId, f32> {
 
             if is_shorter {
                 distances.insert(neighbor_id, next_cost);
-                heap.push(State {
-                    cost: next_cost,
-                    node: neighbor as usize,
-                });
+                heap.push(State { cost: next_cost, node: neighbor as usize });
             }
         }
     }
@@ -186,23 +180,31 @@ pub fn dijkstra(graph: &CsrGraph, source: NodeId) -> HashMap<NodeId, f32> {
 /// assert_eq!(path, vec![NodeId(0), NodeId(1), NodeId(2)]);
 /// ```
 #[must_use]
+/// Reconstruct the shortest path from predecessors map
+fn reconstruct_path(
+    predecessors: &HashMap<NodeId, NodeId>,
+    target: NodeId,
+) -> Vec<NodeId> {
+    let mut path = vec![target];
+    let mut current = target;
+    while let Some(&pred) = predecessors.get(&current) {
+        path.push(pred);
+        current = pred;
+    }
+    path.reverse();
+    path
+}
+
 pub fn dijkstra_path(
     graph: &CsrGraph,
     source: NodeId,
     target: NodeId,
 ) -> Option<(f32, Vec<NodeId>)> {
     let n = graph.num_nodes();
-    if n == 0 {
+    if n == 0 || source.0 as usize >= n || target.0 as usize >= n {
         return None;
     }
 
-    let source_idx = source.0 as usize;
-    let target_idx = target.0 as usize;
-    if source_idx >= n || target_idx >= n {
-        return None;
-    }
-
-    // Same source and target
     if source == target {
         return Some((0.0, vec![source]));
     }
@@ -212,57 +214,36 @@ pub fn dijkstra_path(
     let mut heap = BinaryHeap::new();
 
     distances.insert(source, 0.0);
-    heap.push(State {
-        cost: 0.0,
-        node: source_idx,
-    });
+    heap.push(State { cost: 0.0, node: source.0 as usize });
 
     while let Some(State { cost, node }) = heap.pop() {
         #[allow(clippy::cast_possible_truncation)]
         let node_id = NodeId(node as u32);
 
-        // Found target
         if node_id == target {
-            // Reconstruct path
-            let mut path = vec![target];
-            let mut current = target;
-            while let Some(&pred) = predecessors.get(&current) {
-                path.push(pred);
-                current = pred;
-            }
-            path.reverse();
+            let path = reconstruct_path(&predecessors, target);
             return Some((cost, path));
         }
 
-        // Skip if we've found a better path
-        if let Some(&d) = distances.get(&node_id) {
-            if cost > d {
-                continue;
-            }
+        if distances.get(&node_id).map_or(false, |&d| cost > d) {
+            continue;
         }
 
-        // Explore neighbors using adjacency (targets, weights)
         let (neighbors, weights) = graph.adjacency(node_id);
         for (i, &neighbor) in neighbors.iter().enumerate() {
             let neighbor_id = NodeId(neighbor);
             let weight = weights.get(i).copied().unwrap_or(1.0);
-
             let next_cost = cost + weight;
 
-            let is_shorter = distances.get(&neighbor_id).map_or(true, |&d| next_cost < d);
-
-            if is_shorter {
+            if distances.get(&neighbor_id).map_or(true, |&d| next_cost < d) {
                 distances.insert(neighbor_id, next_cost);
                 predecessors.insert(neighbor_id, node_id);
-                heap.push(State {
-                    cost: next_cost,
-                    node: neighbor as usize,
-                });
+                heap.push(State { cost: next_cost, node: neighbor as usize });
             }
         }
     }
 
-    None // Target unreachable
+    None
 }
 
 #[cfg(test)]

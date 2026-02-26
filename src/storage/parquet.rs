@@ -96,20 +96,18 @@ impl CsrGraph {
         let weight_array = Arc::new(Float32Array::from(weights));
 
         // Create RecordBatch
-        let batch = RecordBatch::try_new(
-            schema.clone(),
-            vec![source_array, target_array, weight_array],
-        )
-        .context("Failed to create RecordBatch")?;
+        let batch =
+            RecordBatch::try_new(schema.clone(), vec![source_array, target_array, weight_array])
+                .context("Failed to create RecordBatch")?;
 
         // Write to Parquet
         let file =
             File::create(&edges_path).with_context(|| format!("Failed to create {edges_path}"))?;
 
         let props = WriterProperties::builder()
-            .set_compression(parquet::basic::Compression::ZSTD(
-                parquet::basic::ZstdLevel::try_new(3)?,
-            ))
+            .set_compression(parquet::basic::Compression::ZSTD(parquet::basic::ZstdLevel::try_new(
+                3,
+            )?))
             .build();
 
         let mut writer = ArrowWriter::try_new(file, schema, Some(props))?;
@@ -156,9 +154,9 @@ impl CsrGraph {
             File::create(&nodes_path).with_context(|| format!("Failed to create {nodes_path}"))?;
 
         let props = WriterProperties::builder()
-            .set_compression(parquet::basic::Compression::ZSTD(
-                parquet::basic::ZstdLevel::try_new(3)?,
-            ))
+            .set_compression(parquet::basic::Compression::ZSTD(parquet::basic::ZstdLevel::try_new(
+                3,
+            )?))
             .build();
 
         let mut writer = ArrowWriter::try_new(file, schema, Some(props))?;
@@ -200,11 +198,7 @@ impl CsrGraph {
                 .context("Invalid weight column type")?;
 
             for i in 0..batch.num_rows() {
-                edges.push((
-                    NodeId(sources.value(i)),
-                    NodeId(targets.value(i)),
-                    weights.value(i),
-                ));
+                edges.push((NodeId(sources.value(i)), NodeId(targets.value(i)), weights.value(i)));
             }
         }
 

@@ -65,11 +65,7 @@ fn build_call_graph() -> Result<CsrGraph, Box<dyn std::error::Error>> {
         graph.set_node_name(NodeId(id as u32), (*name).to_string());
     }
 
-    println!(
-        "  ✅ Graph built: {} nodes, {} edges\n",
-        graph.num_nodes(),
-        graph.num_edges()
-    );
+    println!("  ✅ Graph built: {} nodes, {} edges\n", graph.num_nodes(), graph.num_edges());
 
     Ok(graph)
 }
@@ -146,21 +142,10 @@ async fn demo_parquet_roundtrip(
     let loaded_scores = pagerank(&loaded, 20, 1e-6)?;
 
     // Verify PageRank is consistent
-    let diff: f32 = scores
-        .iter()
-        .zip(loaded_scores.iter())
-        .map(|(a, b)| (a - b).abs())
-        .sum();
+    let diff: f32 = scores.iter().zip(loaded_scores.iter()).map(|(a, b)| (a - b).abs()).sum();
 
-    println!(
-        "  ✅ Loaded: {} nodes, {} edges",
-        loaded.num_nodes(),
-        loaded.num_edges()
-    );
-    println!(
-        "  ✅ PageRank consistency: {:.2e} (sum of absolute differences)",
-        diff
-    );
+    println!("  ✅ Loaded: {} nodes, {} edges", loaded.num_nodes(), loaded.num_edges());
+    println!("  ✅ PageRank consistency: {:.2e} (sum of absolute differences)", diff);
 
     Ok(diff)
 }
@@ -168,14 +153,8 @@ async fn demo_parquet_roundtrip(
 fn print_summary(reachable: &[u32], callers: &[u32], ranked: &[(&str, f32)], diff: f32) {
     println!("\n✨ Phase 2 algorithms complete!");
     println!("\nSummary:");
-    println!(
-        "  • BFS found {} reachable functions from main()",
-        reachable.len()
-    );
+    println!("  • BFS found {} reachable functions from main()", reachable.len());
     println!("  • validate_config() has {} callers", callers.len());
-    println!(
-        "  • Most important: {} (score: {:.4})",
-        ranked[0].0, ranked[0].1
-    );
+    println!("  • Most important: {} (score: {:.4})", ranked[0].0, ranked[0].1);
     println!("  • Parquet roundtrip verified (diff: {:.2e})", diff);
 }

@@ -60,19 +60,10 @@ impl Pattern {
     /// Create a new pattern
     #[must_use]
     pub fn new(name: String, edges: Vec<(u32, u32)>, severity: Severity) -> Self {
-        let num_nodes = edges
-            .iter()
-            .flat_map(|(s, t)| [*s, *t])
-            .max()
-            .map_or(0, |max| max as usize + 1);
+        let num_nodes =
+            edges.iter().flat_map(|(s, t)| [*s, *t]).max().map_or(0, |max| max as usize + 1);
 
-        Self {
-            name,
-            edges,
-            min_nodes: num_nodes,
-            max_nodes: None,
-            severity,
-        }
+        Self { name, edges, min_nodes: num_nodes, max_nodes: None, severity }
     }
 
     /// Create a "God Class" pattern (node with many outgoing edges)
@@ -296,6 +287,40 @@ fn find_generic_patterns(graph: &CsrGraph, pattern: &Pattern) -> Result<Vec<Patt
     Ok(matches)
 }
 
+/// Verify that all mapped edges in the pattern exist in the graph
+fn edges_consistent(
+    graph: &CsrGraph,
+    pattern_adj: &HashMap<u32, HashSet<u32>>,
+    mapping: &HashMap<u32, NodeId>,
+) -> bool {
+    for (&p_src, &g_src) in mapping.iter() {
+        let Some(p_targets) = pattern_adj.get(&p_src) else {
+            continue;
+        };
+        let g_targets: HashSet<u32> =
+            graph.outgoing_neighbors(g_src).unwrap_or_default().iter().copied().collect();
+        for &p_target in p_targets {
+            if let Some(&g_target) = mapping.get(&p_target) {
+                if !g_targets.contains(&g_target.0) {
+                    return false;
+                }
+            }
+        }
+    }
+    true
+}
+
+/// Remove a node from the mapping and used set (backtrack step)
+fn backtrack(
+    pattern_node: u32,
+    graph_node: NodeId,
+    mapping: &mut HashMap<u32, NodeId>,
+    used_nodes: &mut HashSet<NodeId>,
+) {
+    mapping.remove(&pattern_node);
+    used_nodes.remove(&graph_node);
+}
+
 /// Recursive helper for pattern matching (backtracking)
 #[allow(clippy::cast_possible_truncation)]
 fn try_match_pattern(
@@ -307,71 +332,45 @@ fn try_match_pattern(
     mapping: &mut HashMap<u32, NodeId>,
     used_nodes: &mut HashSet<NodeId>,
 ) -> bool {
-    // Check if node already used
     if used_nodes.contains(&graph_node) {
         return false;
     }
 
-    // Add to mapping
     mapping.insert(pattern_node, graph_node);
     used_nodes.insert(graph_node);
 
-    // If mapped all nodes, success
     if mapping.len() == pattern_size {
         return true;
     }
 
-    // Check edges match for all previously mapped nodes
-    for (&p_src, &g_src) in mapping.iter() {
-        if let Some(p_targets) = pattern_adj.get(&p_src) {
-            let g_targets: HashSet<u32> = graph
-                .outgoing_neighbors(g_src)
-                .unwrap_or_default()
-                .iter()
-                .copied()
-                .collect();
-
-            for &p_target in p_targets {
-                if let Some(&g_target) = mapping.get(&p_target) {
-                    // Edge should exist in graph
-                    if !g_targets.contains(&g_target.0) {
-                        // Backtrack
-                        mapping.remove(&pattern_node);
-                        used_nodes.remove(&graph_node);
-                        return false;
-                    }
-                }
-            }
-        }
+    if !edges_consistent(graph, pattern_adj, mapping) {
+        backtrack(pattern_node, graph_node, mapping, used_nodes);
+        return false;
     }
 
     // Try extending mapping to unmapped pattern nodes
     for next_pattern_node in 0..pattern_size as u32 {
-        if !mapping.contains_key(&next_pattern_node) {
-            // Try all graph nodes
-            for next_graph_node in 0..graph.num_nodes() {
-                if try_match_pattern(
-                    graph,
-                    pattern_adj,
-                    pattern_size,
-                    next_pattern_node,
-                    NodeId(next_graph_node as u32),
-                    mapping,
-                    used_nodes,
-                ) {
-                    return true;
-                }
-            }
-            // Backtrack
-            mapping.remove(&pattern_node);
-            used_nodes.remove(&graph_node);
-            return false;
+        if mapping.contains_key(&next_pattern_node) {
+            continue;
         }
+        let found = (0..graph.num_nodes()).any(|next_graph_node| {
+            try_match_pattern(
+                graph,
+                pattern_adj,
+                pattern_size,
+                next_pattern_node,
+                NodeId(next_graph_node as u32),
+                mapping,
+                used_nodes,
+            )
+        });
+        if !found {
+            backtrack(pattern_node, graph_node, mapping, used_nodes);
+        }
+        return found;
     }
 
-    // Backtrack
-    mapping.remove(&pattern_node);
-    used_nodes.remove(&graph_node);
+    backtrack(pattern_node, graph_node, mapping, used_nodes);
     false
 }
 
@@ -386,15 +385,7 @@ fn find_cycles_from_node(
     let mut visited = HashSet::new();
     visited.insert(start.0);
 
-    dfs_find_cycles(
-        graph,
-        start,
-        start,
-        &mut path,
-        &mut visited,
-        target_length,
-        &mut cycles,
-    );
+    dfs_find_cycles(graph, start, start, &mut path, &mut visited, target_length, &mut cycles);
 
     cycles
 }
@@ -526,11 +517,8 @@ mod tests {
     #[test]
     fn test_generic_pattern_triangle() {
         // Create a triangle pattern: 0 -> 1, 1 -> 2, 2 -> 0
-        let pattern = Pattern::new(
-            "Triangle".to_string(),
-            vec![(0, 1), (1, 2), (2, 0)],
-            Severity::Low,
-        );
+        let pattern =
+            Pattern::new("Triangle".to_string(), vec![(0, 1), (1, 2), (2, 0)], Severity::Low);
 
         // Graph with triangle
         let mut graph = CsrGraph::new();

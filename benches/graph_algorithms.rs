@@ -39,16 +39,12 @@ fn bench_csr_construction(c: &mut Criterion) {
     for size in [100, 500, 1000, 5000].iter() {
         let edges = generate_scale_free_graph(*size, 3);
 
-        group.bench_with_input(
-            BenchmarkId::new("from_edge_list", size),
-            &edges,
-            |b, edges| {
-                b.iter(|| {
-                    let graph = CsrGraph::from_edge_list(black_box(edges)).unwrap();
-                    black_box(graph);
-                });
-            },
-        );
+        group.bench_with_input(BenchmarkId::new("from_edge_list", size), &edges, |b, edges| {
+            b.iter(|| {
+                let graph = CsrGraph::from_edge_list(black_box(edges)).unwrap();
+                black_box(graph);
+            });
+        });
     }
 
     group.finish();
@@ -100,16 +96,12 @@ fn bench_pagerank(c: &mut Criterion) {
         let edges = generate_scale_free_graph(*size, 3);
         let graph = CsrGraph::from_edge_list(&edges).unwrap();
 
-        group.bench_with_input(
-            BenchmarkId::new("20_iterations", size),
-            &graph,
-            |b, graph| {
-                b.iter(|| {
-                    let scores = pagerank(black_box(graph), 20, 1e-6).unwrap();
-                    black_box(scores);
-                });
-            },
-        );
+        group.bench_with_input(BenchmarkId::new("20_iterations", size), &graph, |b, graph| {
+            b.iter(|| {
+                let scores = pagerank(black_box(graph), 20, 1e-6).unwrap();
+                black_box(scores);
+            });
+        });
     }
 
     group.finish();

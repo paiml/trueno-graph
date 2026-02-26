@@ -31,11 +31,7 @@ impl GpuMemoryLimits {
     /// # Errors
     ///
     /// Returns error if GPU device is not available
-    #[allow(
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss,
-        clippy::cast_precision_loss
-    )]
+    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss, clippy::cast_precision_loss)]
     pub fn detect(device: &GpuDevice) -> Result<Self> {
         // Get adapter limits from wgpu
         let limits = device.device().limits();
@@ -50,12 +46,7 @@ impl GpuMemoryLimits {
         let morsel_size = DEFAULT_MORSEL_SIZE;
         let max_morsels = (usable_vram as usize / morsel_size).max(1);
 
-        Ok(Self {
-            total_vram,
-            usable_vram,
-            morsel_size,
-            max_morsels,
-        })
+        Ok(Self { total_vram, usable_vram, morsel_size, max_morsels })
     }
 
     /// Check if graph fits entirely in VRAM

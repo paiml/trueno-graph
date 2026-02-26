@@ -306,10 +306,7 @@ impl CsrGraph {
         let start = self.row_offsets[idx] as usize;
         let end = self.row_offsets[idx + 1] as usize;
 
-        (
-            &self.col_indices[start..end],
-            &self.edge_weights[start..end],
-        )
+        (&self.col_indices[start..end], &self.edge_weights[start..end])
     }
 
     /// Iterate over all nodes and their adjacency lists
@@ -321,11 +318,7 @@ impl CsrGraph {
             let end = self.row_offsets[node_id + 1] as usize;
 
             #[allow(clippy::cast_possible_truncation)]
-            (
-                NodeId(node_id as u32),
-                &self.col_indices[start..end],
-                &self.edge_weights[start..end],
-            )
+            (NodeId(node_id as u32), &self.col_indices[start..end], &self.edge_weights[start..end])
         })
     }
 

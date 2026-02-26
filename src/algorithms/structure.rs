@@ -365,7 +365,7 @@ mod tests {
         let sccs = kosaraju_scc(&graph);
         assert_eq!(sccs.len(), 2);
         // One SCC has 3 nodes, one has 2
-        let sizes: Vec<_> = sccs.iter().map(|s| s.len()).collect();
+        let sizes: Vec<_> = sccs.iter().map(std::vec::Vec::len).collect();
         assert!(sizes.contains(&3));
         assert!(sizes.contains(&2));
     }

@@ -106,11 +106,7 @@ impl PagingCoordinator {
             });
         }
 
-        Ok(Self {
-            limits,
-            tiles,
-            tile_size,
-        })
+        Ok(Self { limits, tiles, tile_size })
     }
 
     /// Extract CSR data for a tile (nodes `start_node..end_node`)
@@ -145,9 +141,7 @@ impl PagingCoordinator {
     #[must_use]
     pub fn get_tile_for_node(&self, node: NodeId) -> Option<&GraphTile> {
         let node_idx = node.0 as usize;
-        self.tiles
-            .iter()
-            .find(|tile| node_idx >= tile.start_node && node_idx < tile.end_node)
+        self.tiles.iter().find(|tile| node_idx >= tile.start_node && node_idx < tile.end_node)
     }
 
     /// Get tile by ID
@@ -228,9 +222,7 @@ mod tests {
         // Create larger graph
         let mut graph = CsrGraph::new();
         for i in 0..100 {
-            graph
-                .add_edge(NodeId(i), NodeId((i + 1) % 100), 1.0)
-                .unwrap();
+            graph.add_edge(NodeId(i), NodeId((i + 1) % 100), 1.0).unwrap();
         }
 
         let coordinator = PagingCoordinator::new(&device, &graph).unwrap();

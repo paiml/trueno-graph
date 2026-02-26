@@ -89,11 +89,8 @@ async fn test_parquet_persistence() {
 #[test]
 fn test_csr_components_for_aprender() {
     // Test CSR component extraction (for aprender integration)
-    let edges = vec![
-        (NodeId(0), NodeId(1), 1.0),
-        (NodeId(0), NodeId(2), 2.0),
-        (NodeId(1), NodeId(2), 3.0),
-    ];
+    let edges =
+        vec![(NodeId(0), NodeId(1), 1.0), (NodeId(0), NodeId(2), 2.0), (NodeId(1), NodeId(2), 3.0)];
 
     let graph = CsrGraph::from_edge_list(&edges).unwrap();
     let (row_offsets, col_indices, weights) = graph.csr_components();
