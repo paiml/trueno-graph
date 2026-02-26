@@ -17,6 +17,9 @@
 **GPU-First Embedded Graph Database for Code Analysis**
 
 [![CI](https://github.com/paiml/trueno-graph/actions/workflows/ci.yml/badge.svg)](https://github.com/paiml/trueno-graph/actions)
+[![Crates.io](https://img.shields.io/crates/v/trueno-graph.svg)](https://crates.io/crates/trueno-graph)
+[![Documentation](https://docs.rs/trueno-graph/badge.svg)](https://docs.rs/trueno-graph)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)]()
 
 </div>
 

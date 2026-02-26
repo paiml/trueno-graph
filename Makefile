@@ -8,6 +8,7 @@ help:
 	@echo ""
 	@echo "Quality targets:"
 	@echo "  make test          - Run all tests (unit + integration)"
+	@echo "  make test-fast     - Run unit tests only (fast feedback)"
 	@echo "  make bench         - Run Criterion benchmarks"
 	@echo "  make quality       - Run all quality gates (pmat + certeza)"
 	@echo "  make coverage      - Generate test coverage report"
@@ -43,6 +44,10 @@ release:
 .PHONY: test
 test:
 	cargo test --all-features
+
+.PHONY: test-fast
+test-fast: ## Run unit tests only (fast feedback)
+	cargo test --lib
 
 .PHONY: bench
 bench: ## Run Criterion benchmarks
@@ -97,7 +102,11 @@ quality: lint
 	pmat quality-gate --checks clippy,fmt,tests,coverage --coverage-threshold 95
 	@echo "Running bashrs Makefile validation..."
 	bashrs lint Makefile
-	@echo "Quality gates passed ✅"
+	@echo "Quality gates passed"
+
+.PHONY: quality-gate
+quality-gate: lint test coverage
+	@echo "All quality gates passed"
 
 .PHONY: mutation-test
 mutation-test:
