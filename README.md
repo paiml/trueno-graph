@@ -2,6 +2,14 @@
 
 <img src=".github/trueno-graph-hero.svg" alt="trueno-graph" width="600">
 
+## Table of Contents
+
+- [Installation](#installation)
+- [Usage](#usage)
+- [Contributing](#contributing)
+- [License](#license)
+
+
 **GPU-First Embedded Graph Database for Code Analysis**
 
 [![CI](https://github.com/paiml/trueno-graph/actions/workflows/ci.yml/badge.svg)](https://github.com/paiml/trueno-graph/actions)
