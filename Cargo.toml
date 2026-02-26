@@ -132,3 +132,6 @@ rustdoc-args = ["--generate-link-to-definition"]
 shared-version = true
 
 [workspace.dependencies]
+
+[profile.dev]
+panic = "abort"
