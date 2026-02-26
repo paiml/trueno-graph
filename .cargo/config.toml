@@ -1,3 +1,10 @@
 # ZRAM build acceleration (disabled for CI compatibility)
 # [build]
+incremental = true
 # target-dir = "/mnt/zram/targets/trueno-graph"
+
+[alias]
+t = "test"
+c = "check"
+b = "build --release"
+cl = "clippy --all-targets -- -D warnings"

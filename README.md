@@ -73,6 +73,10 @@ make coverage  # ≥95% coverage
 make bench     # Benchmarks
 ```
 
+## Contributing
+
+Contributions are welcome! Please see the [CONTRIBUTING.md](CONTRIBUTING.md) guide for details.
+
 ## License
 
 MIT

@@ -119,3 +119,10 @@ panic = "abort"                                         # Smaller binary
 [profile.bench]
 inherits = "release"
 debug = true                                            # Keep symbols for flamegraph profiling
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--generate-link-to-definition"]
+
+[package.metadata.release]
+shared-version = true
