@@ -40,8 +40,6 @@ fn bfs_level(@builtin(global_invocation_id) global_id: vec3<u32>) {
     if (node_id >= ro_len || (node_id + 1u) >= ro_len) {
         return;
     }
-
-    // Process all neighbors
     let start = row_offsets[node_id];
     let end = row_offsets[node_id + 1u];
 

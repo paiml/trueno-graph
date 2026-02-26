@@ -3,7 +3,7 @@
 // Algorithm:
 // 1. Initialize all scores to 1/N
 // 2. For each iteration:
-//    - new_pr[v] = (1-d)/N + d * sum(pr[u] / out_degree[u]) for all u -> v
+//    - new_pr(v) = (1-d)/N + d * sum(pr(u) / out_degree(u)) for all u -> v
 //    - Handle dangling nodes (out_degree = 0) by redistributing to all nodes
 // 3. Repeat until convergence (20 iterations typical)
 //
@@ -38,8 +38,7 @@ fn pagerank_iteration(@builtin(global_invocation_id) global_id: vec3<u32>) {
     let dangling_contrib = params.damping * params.dangling_sum / f32(params.num_nodes);
 
     // Accumulate contributions from incoming neighbors
-    // For each u where u -> node_id:
-    //   contribution += current_scores[u] / out_degrees[u]
+    // For each u where u -> node_id: contribution += scores(u) / degree(u)
     var contribution_sum = 0.0;
 
     let ro_len = arrayLength(&row_offsets);

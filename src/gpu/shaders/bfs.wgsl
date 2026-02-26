@@ -39,23 +39,16 @@ fn bfs_kernel(@builtin(global_invocation_id) global_id: vec3<u32>) {
         return;
     }
 
-    // CB-001: bounds-check row_offsets access
+    // CB-001: bounds-check row_offsets and distances access
     let ro_len = arrayLength(&row_offsets);
-    if (vertex >= ro_len || (vertex + 1u) >= ro_len) {
-        return;
-    }
-
-    // Get current distance
-    // CB-001: bounds-check distances access
     let dist_len = arrayLength(&distances);
-    if (vertex >= dist_len) {
+    if (vertex >= ro_len || (vertex + 1u) >= ro_len || vertex >= dist_len) {
         return;
     }
-    let current_dist = distances[vertex];
 
-    // Process neighbors
     let start = row_offsets[vertex];
     let end = row_offsets[vertex + 1u];
+    let current_dist = distances[vertex];
 
     let ci_len = arrayLength(&col_indices);
     let nf_len = arrayLength(&next_frontier);
