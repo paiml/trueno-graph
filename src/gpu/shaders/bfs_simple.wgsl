@@ -35,12 +35,28 @@ fn bfs_level(@builtin(global_invocation_id) global_id: vec3<u32>) {
         return;
     }
 
+    // CB-001: bounds-check row_offsets access
+    let ro_len = arrayLength(&row_offsets);
+    if (node_id >= ro_len || (node_id + 1u) >= ro_len) {
+        return;
+    }
+
     // Process all neighbors
     let start = row_offsets[node_id];
     let end = row_offsets[node_id + 1u];
 
+    let ci_len = arrayLength(&col_indices);
     for (var i = start; i < end; i++) {
+        // CB-001: bounds-check col_indices access
+        if (i >= ci_len) {
+            break;
+        }
         let neighbor = col_indices[i];
+
+        // CB-001: bounds-check distances access
+        if (neighbor >= params.num_nodes) {
+            continue;
+        }
 
         // Try to update neighbor's distance (atomic compare-exchange)
         let old_dist = atomicMin(&distances[neighbor], params.current_level + 1u);

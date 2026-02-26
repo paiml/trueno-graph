@@ -39,15 +39,37 @@ fn bfs_kernel(@builtin(global_invocation_id) global_id: vec3<u32>) {
         return;
     }
 
+    // CB-001: bounds-check row_offsets access
+    let ro_len = arrayLength(&row_offsets);
+    if (vertex >= ro_len || (vertex + 1u) >= ro_len) {
+        return;
+    }
+
     // Get current distance
+    // CB-001: bounds-check distances access
+    let dist_len = arrayLength(&distances);
+    if (vertex >= dist_len) {
+        return;
+    }
     let current_dist = distances[vertex];
 
     // Process neighbors
     let start = row_offsets[vertex];
     let end = row_offsets[vertex + 1u];
 
+    let ci_len = arrayLength(&col_indices);
+    let nf_len = arrayLength(&next_frontier);
     for (var i = start; i < end; i++) {
+        // CB-001: bounds-check col_indices access
+        if (i >= ci_len) {
+            break;
+        }
         let neighbor = col_indices[i];
+
+        // CB-001: bounds-check visited/distances access
+        if (neighbor >= graph_meta.num_nodes) {
+            continue;
+        }
 
         // Try to mark neighbor as visited (atomic)
         // Returns 0 if not visited before, 1 if already visited
@@ -55,11 +77,15 @@ fn bfs_kernel(@builtin(global_invocation_id) global_id: vec3<u32>) {
 
         if (was_visited == 0u) {
             // First time visiting this neighbor
-            distances[neighbor] = current_dist + 1u;
+            if (neighbor < dist_len) {
+                distances[neighbor] = current_dist + 1u;
+            }
 
             // Add to next frontier (atomic counter)
             let next_idx = atomicAdd(&next_frontier_size, 1u);
-            next_frontier[next_idx] = neighbor;
+            if (next_idx < nf_len) {
+                next_frontier[next_idx] = neighbor;
+            }
         }
     }
 }

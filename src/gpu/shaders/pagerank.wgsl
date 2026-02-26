@@ -3,7 +3,7 @@
 // Algorithm:
 // 1. Initialize all scores to 1/N
 // 2. For each iteration:
-//    - new_pr[v] = (1-d)/N + d * Σ(pr[u] / out_degree[u]) for all u -> v
+//    - new_pr[v] = (1-d)/N + d * sum(pr[u] / out_degree[u]) for all u -> v
 //    - Handle dangling nodes (out_degree = 0) by redistributing to all nodes
 // 3. Repeat until convergence (20 iterations typical)
 //
@@ -42,9 +42,18 @@ fn pagerank_iteration(@builtin(global_invocation_id) global_id: vec3<u32>) {
     //   contribution += current_scores[u] / out_degrees[u]
     var contribution_sum = 0.0;
 
+    let ro_len = arrayLength(&row_offsets);
+    let ci_len = arrayLength(&col_indices);
+    let od_len = arrayLength(&out_degrees);
+    let cs_len = arrayLength(&current_scores);
+
     // Note: Iterating over all nodes to find incoming edges is O(N*M)
     // Production implementation would use reverse CSR for O(M) complexity
     for (var u = 0u; u < params.num_nodes; u++) {
+        // CB-001: bounds-check out_degrees access
+        if (u >= od_len) {
+            break;
+        }
         let out_degree = out_degrees[u];
 
         // Skip dangling nodes (handled separately via dangling_sum)
@@ -52,19 +61,34 @@ fn pagerank_iteration(@builtin(global_invocation_id) global_id: vec3<u32>) {
             continue;
         }
 
+        // CB-001: bounds-check row_offsets access
+        if (u >= ro_len || (u + 1u) >= ro_len) {
+            continue;
+        }
         let start = row_offsets[u];
         let end = row_offsets[u + 1u];
 
         // Check if u has edge to node_id
         for (var i = start; i < end; i++) {
+            // CB-001: bounds-check col_indices access
+            if (i >= ci_len) {
+                break;
+            }
             if (col_indices[i] == node_id) {
                 // u -> node_id edge found
-                contribution_sum += current_scores[u] / f32(out_degree);
+                // CB-001: bounds-check current_scores access
+                if (u < cs_len) {
+                    contribution_sum += current_scores[u] / f32(out_degree);
+                }
                 break; // Found edge, no need to check more
             }
         }
     }
 
-    // Update score: (1-d)/N + d*dangling/N + d * Σ(PR(u) / out_degree(u))
-    next_scores[node_id] = base_score + dangling_contrib + params.damping * contribution_sum;
+    // Update score: (1-d)/N + d*dangling/N + d * sum(PR(u) / out_degree(u))
+    // CB-001: bounds-check next_scores access
+    let ns_len = arrayLength(&next_scores);
+    if (node_id < ns_len) {
+        next_scores[node_id] = base_score + dangling_contrib + params.damping * contribution_sum;
+    }
 }
