@@ -48,30 +48,30 @@ fn bfs_kernel(@builtin(global_invocation_id) global_id: vec3<u32>) {
 
     let start = row_offsets[vertex];
     let end = row_offsets[vertex + 1u];
-    // CB-001: distances access guarded by dist_len check above
-    let current_dist = distances[vertex]; // safe: vertex < dist_len
+    if (vertex >= arrayLength(&distances)) {
+        return;
+    }
+    let current_dist = distances[vertex];
 
     let ci_len = arrayLength(&col_indices);
     let nf_len = arrayLength(&next_frontier);
     let vis_len = arrayLength(&visited);
     for (var i = start; i < end; i++) {
-        // CB-001: bounds-check col_indices access
         if (i >= ci_len) {
             break;
         }
         let neighbor = col_indices[i];
 
-        // CB-001: bounds-check visited and distances access
         if (neighbor >= graph_meta.num_nodes || neighbor >= vis_len) {
             continue;
         }
 
-        // Try to mark neighbor as visited (atomic)
-        // Returns 0 if not visited before, 1 if already visited
-        let was_visited = atomicExchange(&visited[neighbor], 1u); // safe: neighbor < vis_len
+        if (neighbor >= arrayLength(&visited)) {
+            continue;
+        }
+        let was_visited = atomicExchange(&visited[neighbor], 1u);
 
         if (was_visited == 0u) {
-            // First time visiting this neighbor
             if (neighbor < dist_len) {
                 distances[neighbor] = current_dist + 1u;
             }
