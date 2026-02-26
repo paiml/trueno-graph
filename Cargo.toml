@@ -64,7 +64,11 @@ gpu = ["wgpu", "bytemuck", "futures-intrusive"]
 
 # Workspace lints (PMAT best practices from trueno-db/trueno)
 [workspace]
+resolver = "2"
 members = ["."]
+
+[workspace.package]
+edition = "2021"
 
 [workspace.lints.rust]
 unsafe_op_in_unsafe_fn = "warn"
@@ -126,3 +130,5 @@ rustdoc-args = ["--generate-link-to-definition"]
 
 [package.metadata.release]
 shared-version = true
+
+[workspace.dependencies]
