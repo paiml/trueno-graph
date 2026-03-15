@@ -53,7 +53,7 @@ fn process_node_neighbors(
     let tile = coordinator.get_tile_for_node(node).context("Node not in any tile")?;
     let node_idx_in_tile = node.0 as usize - tile.start_node;
 
-    if node_idx_in_tile >= tile.row_offsets.len() - 1 {
+    if tile.row_offsets.len() < 2 || node_idx_in_tile >= tile.row_offsets.len() - 1 {
         return Ok(());
     }
 
