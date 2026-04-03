@@ -25,9 +25,9 @@ anyhow = "1"
 thiserror = "2"
 
 # Phase 2+ dependencies
-aprender = "0.26"                                       # Sparse matrix ops, PageRank (crates.io)
-trueno = "0.15"                                         # SIMD primitives (crates.io)
-trueno-db = "0.3.14"                                       # Columnar storage (crates.io)
+aprender = "0.27.5"                                     # Sparse matrix ops, PageRank (crates.io)
+trueno = "0.16.5"                                       # SIMD primitives (crates.io)
+trueno-db = "0.3.16"                                    # Columnar storage (crates.io)
 
 # Phase 3: GPU acceleration (optional - requires wgpu-capable hardware)
 wgpu = { version = "22", optional = true, features = ["wgsl"] }
