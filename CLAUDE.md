@@ -2,6 +2,12 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Contract-First Design
+
+This project follows contract-first development with provable-contracts.
+Contracts live in `../provable-contracts/contracts/trueno-graph/`.
+Run `pmat comply check` to validate contract compliance.
+
 ## Project Overview
 
 **trueno-graph** is a GPU-first embedded graph database for code analysis (call graphs, dependencies, AST traversals). Built on PAIML's proven infrastructure (trueno, aprender), it provides 10-250× speedups through hybrid CPU/GPU execution.
@@ -155,8 +161,8 @@ CsrGraph {
 ## Dependencies
 
 ### Core Dependencies
-- **trueno** (0.7.1): SIMD primitives (shared with aprender)
-- **aprender** (0.7.0): Sparse matrix operations, PageRank
+- **trueno** (0.16.4): SIMD primitives (shared with aprender)
+- **aprender** (0.27.5): Sparse matrix operations, PageRank
 - **arrow** (53): RecordBatch zero-copy
 - **parquet** (53): Persistent storage
 - **tokio** (1): Async runtime
