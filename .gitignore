@@ -38,4 +38,3 @@ GOLDEN_TRACE_INTEGRATION_SUMMARY.md
 .pmat/context.idx/
 .pmat/workspace.idx/
 .pmat/deps-cache.json
-src/generated_contracts.rs
